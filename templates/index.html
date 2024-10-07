@@ -9,6 +9,24 @@
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.12.1/css/all.css" crossorigin="anonymous">
 
     <style>
+        body {
+            background-color: black;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .video-container video {
+            animation: fadeIn 2s ease-in;
+        }
+
         .btn-clicked {
             background-color: #4CAF50;
             color: white;
@@ -27,7 +45,7 @@
 
         .loading-spinner {
             position: absolute;
-            top: 70%;
+            top: 60%;
             left: 50%;
             transform: translate(-50%, -50%);
             width: 50px;
@@ -53,21 +71,22 @@
 <body>
     <section class="showcase">
         <div class="video-container">
-           
-            <video src="https://res.cloudinary.com/dquxfl0fe/video/upload/v1728337570/pruebas/iis_x5sgiy.mp4" autoplay muted loop></video>
+
+            <video src="https://res.cloudinary.com/dquxfl0fe/video/upload/v1728337570/pruebas/iis_x5sgiy.mp4" autoplay
+                muted loop></video>
         </div>
         <div class="content">
             <h1>International Space station</h1>
             <h3>Discover the IIS trajectory</h3>
-            <a href="#app" class="btn">Read More</a>
+            <button id="more" class="btn">Read More</button>
         </div>
     </section>
 
-    <section id="app">
-        <a href="{{url_for('mostrar_mapa')}}" class="btn" id="openAppBtn">Abrir la Aplicación ISS</a>
+    <section id="app" style="margin-bottom: 10vh;">
+        <a href="{{url_for('mostrar_mapa')}}" class="btn"  id="openAppBtn">Abrir la Aplicación ISS</a>
 
         <br>
-        <p>
+        <p >
             Mapbox | Maps, Navigation, Search, and Data.
         </p>
 
@@ -86,7 +105,15 @@
     </div>
 
     <script>
+        document.getElementById('more').addEventListener('click', function() {
+            window.scrollTo({
+                top: document.body.scrollHeight,
+                behavior: 'smooth'
+            });
+        });
+
         document.getElementById('openAppBtn').addEventListener('click', function (event) {
+            document.getElementById('more').style.display="none"
             window.scrollTo({
                 top: 0,
                 behavior: 'smooth'
@@ -107,11 +134,7 @@
 
 
 
-        // Intentar subir el scroll varias veces
-        window.onload = function () {
-            window.scrollTo(0, 0);
-
-        };
+       
 
 
 
