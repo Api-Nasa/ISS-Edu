@@ -23,9 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const esDispositivoMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   function moverMapa(id) {
-    if (screen.width < 1200) {
+   
       document.getElementById('cerrar-aside').click();
-    }
+    
 
     const { center, zoom } = ciudades[id];
 
