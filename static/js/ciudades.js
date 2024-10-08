@@ -28,19 +28,37 @@ document.addEventListener('DOMContentLoaded', () => {
       cerrarAsideBtn.click();
     }
 
+    // Cerrar el contenedor del mapa
+    const mapContainer = document.querySelector('.map-container');
+    if (mapContainer) {
+      mapContainer.style.width = '100%';
+    }
+
     const { center, zoom } = ciudades[id];
 
     if (map && typeof map.flyTo === 'function') {
-      map.flyTo({
-        center,
-        zoom,
-        speed: esDispositivoMovil ? 0.8 : 0.5,
-        curve: 1,
-        easing(t) {
-          return t;
-        }
-      });
+      if (esDispositivoMovil) {
+        map.jumpTo({ center, zoom });
+        setTimeout(() => map.fire('moveend'), 500);
+      } else {
+        map.flyTo({
+          center,
+          zoom,
+          speed: 0.5,
+          curve: 1,
+          easing(t) {
+            return t;
+          }
+        });
+      }
     }
+
+    // Forzar un reajuste del mapa después de cambiar el tamaño del contenedor
+    setTimeout(() => {
+      if (map && typeof map.resize === 'function') {
+        map.resize();
+      }
+    }, 100);
   }
 
   Object.keys(ciudades).forEach(id => {
