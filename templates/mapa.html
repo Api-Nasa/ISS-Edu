@@ -249,49 +249,75 @@
         }
 
         function actualizarUbicacion() {
-            fetch('/actualizar_ubicacion')
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.latitud && data.longitud) {
-                        nuevaLatitud = data.latitud;
-                        nuevaLongitud = data.longitud;
-                        document.getElementById('latitud').innerText = "Lat.: " + nuevaLatitud
-                        document.getElementById('longitud').innerText = "Long: " + nuevaLongitud
+            // Implementar throttling para limitar la frecuencia de actualización
+            if (!actualizarUbicacion.throttleTimer) {
+                actualizarUbicacion.throttleTimer = setTimeout(function() {
+                    fetch('/actualizar_ubicacion')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && data.latitud && data.longitud) {
+                                nuevaLatitud = data.latitud;
+                                nuevaLongitud = data.longitud;
+                                document.getElementById('latitud').innerText = "Lat.: " + nuevaLatitud
+                                document.getElementById('longitud').innerText = "Long: " + nuevaLongitud
 
 
 
 
-                        // Crear y añadir el nuevo marcador
-                        var el = document.createElement('div');
-                        el.className = 'marker';
+                                // Crear y añadir el nuevo marcador
+                                var el = document.createElement('div');
+                                el.className = 'marker';
 
-                        marker = new mapboxgl.Marker(el)
-                            .setLngLat([nuevaLongitud, nuevaLatitud])
-                            .addTo(map);
+                                marker = new mapboxgl.Marker(el)
+                                    .setLngLat([nuevaLongitud, nuevaLatitud])
+                                    .addTo(map);
 
-                        // Actualizar la vista del mapa
-                        map.flyTo({
-                            /*     center: [nuevaLongitud, nuevaLatitud], */
-                            essential: true,
-                            duration: 1000
-                        });
+                                // Actualizar la vista del mapa
+                                map.flyTo({
+                                    /*     center: [nuevaLongitud, nuevaLatitud], */
+                                    essential: true,
+                                    duration: 1000
+                                });
 
-                        console.log('Ubicación actualizada:', nuevaLatitud, nuevaLongitud);
-                    }
-                })
-                .catch(error => console.error('Error:', error));
+                                console.log('Ubicación actualizada:', nuevaLatitud, nuevaLongitud);
+                            }
+                        })
+                        .catch(error => console.error('Error:', error));
+                    
+                    actualizarUbicacion.throttleTimer = null;
+                }, 1000); // Ajustar este valor según sea necesario
+            }
         }
 
         function inicializarMapa() {
             var ubicacion = JSON.parse('{{ ubicacion | tojson | safe }}');
             mapboxgl.accessToken = 'pk.eyJ1IjoiZ2EtZWR1YXJkbyIsImEiOiJjbDVmNzQyY3kwaHJpM2pvM29lOWVuZnVlIn0.a20bgkRxwewC43RomqCQ9g';
 
+            mapboxgl.setRTLTextPlugin('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.2.3/mapbox-gl-rtl-text.js');
+            
             map = new mapboxgl.Map({
                 container: 'map',
                 style: 'mapbox://styles/mapbox/satellite-streets-v12',
                 center: [ubicacion[1], ubicacion[0]],
                 zoom: zoomy,
-                projection: 'globe'
+                projection: 'globe',
+                maxZoom: 18, // Limitar el zoom máximo
+                minZoom: 1,  // Establecer un zoom mínimo
+                attributionControl: false // Desactivar el control de atribución para mejorar el rendimiento
+            });
+
+            // Añadir el control de atribución en una posición personalizada
+            map.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
+
+            // Optimizar el manejo de eventos
+            map.on('movestart', function() {
+                // Reducir la calidad de la imagen durante el movimiento
+                map.getCanvas().style.imageRendering = 'pixelated';
+            });
+
+            map.on('moveend', function() {
+                // Restaurar la calidad de la imagen después del movimiento
+                map.getCanvas().style.imageRendering = 'auto';
             });
 
             marker = new mapboxgl.Marker()
@@ -302,6 +328,15 @@
                 zoomy = map.getZoom();
                 $("#sliderHandle").slider("value", zoomy);
                 $("#custom-handle").text(zoomy.toFixed(1));
+            });
+
+            map.on('render', function() {
+                if (map.loaded()) {
+                    var fps = Math.round(map.getFrameRate());
+                    if (fps < 15) {
+                        map.setStyle('mapbox://styles/mapbox/light-v10'); // Cambiar a un estilo más ligero
+                    }
+                }
             });
         }
 
@@ -344,24 +379,45 @@
                 range: 'min',
                 min: 0,
                 max: 23,
-                values: 0,
-                step: 1,
+                value: 0.8,
+                step: 0.1,
                 create: function () {
-                    handle.text($(this).slider("value"));
+                    handle.text($(this).slider("value").toFixed(1));
                 },
                 slide: function (event, ui) {
-                    handle.text(ui.value);
-                    zoomy = ui.value
-                    go_zoom()
+                    handle.text(ui.value.toFixed(1));
+                    zoomy = ui.value;
+                    go_zoom();
                 }
             });
+
+            // Hacer el slider táctil
+            $("#sliderHandle").draggable();
+
+            // Ajustar el tamaño del slider para dispositivos móviles
+            if (/Mobi|Android/i.test(navigator.userAgent)) {
+                $("#sliderHandle").css({
+                    'height': '30px',
+                    'touch-action': 'none'
+                });
+                $(".ui-slider-handle").css({
+                    'width': '40px',
+                    'height': '40px',
+                    'top': '-5px',
+                    'margin-left': '-20px'
+                });
+            }
         });
 
 
 
-        document.addEventListener('DOMContentLoaded', inicializarMapa);
-        // Volver a activar la actualización automática cada segundo
-        setInterval(actualizarUbicacion, 1000);
+        document.addEventListener('DOMContentLoaded', function() {
+            inicializarMapa();
+            
+            // Ajustar la frecuencia de actualización según el tipo de dispositivo
+            var intervaloActualizacion = /Mobi|Android/i.test(navigator.userAgent) ? 3000 : 1000;
+            setInterval(actualizarUbicacion, intervaloActualizacion);
+        });
 
 
         function limpiar_caja() {
