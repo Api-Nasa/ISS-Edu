@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formatNumber = (num) => num.toString().padStart(2, '0');
 
     const formattedTime = `${days} días ${formatNumber(hours)}:${formatNumber(mins)}:${formatNumber(secs)}`;
-    document.getElementById("contador").textContent = formattedTime + " en orbita";
+    document.getElementById("contador_estancia").textContent = formattedTime + " en orbita";
   };
 
   setNewTime();

@@ -2,6 +2,9 @@
 <html>
 
 <head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta charset="utf-8" />
     <title>Mapa de la ISS</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
@@ -27,6 +30,35 @@
     <!-- plus a jQuery UI theme, here I use "flick" -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.10.4/themes/flick/jquery-ui.css">
 
+    <style>
+        @keyframes parpadeo {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .alerta {
+            animation: parpadeo 1s infinite;
+            background-color: red;
+            color: white;
+            padding: 10px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
 
 </head>
 
@@ -50,12 +82,12 @@
             <ul style="z-index: 1;float: left; margin-bottom: 2em;">
                 <li id="latitud" style="z-index: 1;font-size: 1em;"></li>
                 <li id="longitud" style="z-index: 1;font-size: 1em;"></li>
-                <li id="contador" style="color: yellow;z-index: 1;">contador</li>
+                <li id="contador_estancia" style="color: yellow;z-index: 1;">contador</li>
+                <li id="actualizaciones" style="color: orange;z-index: 1;">Actualizaciones: 0 / 1000</li>
             </ul>
 
             <button onclick="centrarMapa()" style="z-index: 1;border-radius: 0.5em;width: 80%;
-            font-size: 1.5em;padding: 0.5em;display: block;margin-bottom: 1em;cursor:pointer ;">Trayectoria IIS en
-                tiempo real</button>
+                font-size: 1.5em;padding: 0.5em;display: block;margin-bottom: 1em;cursor:pointer;">Trayectoria ISS en tiempo real</button>
             <button onclick="lista_xml()" style="z-index: 1;border-radius: 0.5em;width: 80%;
             font-size: 1.5em;padding: 0.5em;display: block;margin-bottom: 1em;cursor: pointer;">Predicción de
                 Trayectoria y días anteriores</button>
@@ -73,8 +105,8 @@
             <input id="caja-buscar" onkeypress="return event.keyCode != 13;" class="uk-input"
                 placeholder="busca (Pais,Ciudad,Rio,Lago...)" autocomplete="off" type="text"
                 style="width: 80%;margin-top: -1.2em;" name="buscador" hx-get="/obtener_coordenadas_ciudad"
-                hx-target="#ciudad" hx-trigger="keyup changed delay:1000ms" hx-swap="innerHTML "
-                hx-on::after-request="this.blur()">
+                hx-target="#ciudad" hx-trigger="keyup changed delay:1000ms" hx-swap="innerHTML"
+                hx-on::after-request="afterRequestHandler(this)">
 
             <span id="limpiar" onclick="limpiar_caja()" style=" font-size: 2.6em; 
                  border: solid 1px rgb(151, 149, 149);background-color: darkgray;cursor: pointer;">X</span>
@@ -170,11 +202,31 @@
 
 
     <div id="map"></div>
+    <div id="alerta" class="alerta">¡Se han alcanzado 1000 actualizaciones!</div>
+    <audio id="sonidoAlerta" src="{{url_for('static',filename='sonidos/alerta.mp3')}}" preload="auto"></audio>
     <script>
-        var map, marker;
-        var nuevaLatitud, nuevaLongitud;
-        var zoomy = 0.8
+        var map;
+        var marcadorInicial;
+        var marcadorActual;
+        var lineaRuta;
+        var puntoInicial;
+        var zoomy = 1; // Valor inicial de zoom
+        var sliderHandle; // Variable para almacenar el objeto slider
+        var actualizandoZoom = false; // Flag para evitar bucles infinitos
+        var actualizandoSlider = false;
+        var puntosRuta = []; // Array para almacenar todos los puntos de la ruta
 
+        function mostrarAlerta() {
+            var alerta = document.getElementById('alerta');
+            var sonido = document.getElementById('sonidoAlerta');
+            alerta.style.display = 'block';
+            sonido.play();
+            setTimeout(function () {
+                alerta.style.display = 'none';
+                sonido.pause();
+                sonido.currentTime = 0;
+            }, 5000);
+        }
         function lista_xml() {
             document.getElementById('borrar_xml').style.display = "block"
             var ubicaciones = JSON.parse('{{ lista | tojson | safe }}');
@@ -248,186 +300,304 @@
             document.getElementById('cerrar-aside').click()
         }
 
-        function actualizarUbicacion() {
-            // Implementar throttling para limitar la frecuencia de actualización
-            if (!actualizarUbicacion.throttleTimer) {
-                actualizarUbicacion.throttleTimer = setTimeout(function() {
-                    fetch('/actualizar_ubicacion')
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data && data.latitud && data.longitud) {
-                                nuevaLatitud = data.latitud;
-                                nuevaLongitud = data.longitud;
-                                document.getElementById('latitud').innerText = "Lat.: " + nuevaLatitud
-                                document.getElementById('longitud').innerText = "Long: " + nuevaLongitud
-
-
-
-
-                                // Crear y añadir el nuevo marcador
-                                var el = document.createElement('div');
-                                el.className = 'marker';
-
-                                marker = new mapboxgl.Marker(el)
-                                    .setLngLat([nuevaLongitud, nuevaLatitud])
-                                    .addTo(map);
-
-                                // Actualizar la vista del mapa
-                                map.flyTo({
-                                    /*     center: [nuevaLongitud, nuevaLatitud], */
-                                    essential: true,
-                                    duration: 1000
-                                });
-
-                                console.log('Ubicación actualizada:', nuevaLatitud, nuevaLongitud);
-                            }
-                        })
-                        .catch(error => console.error('Error:', error));
-                    
-                    actualizarUbicacion.throttleTimer = null;
-                }, 1000); // Ajustar este valor según sea necesario
-            }
-        }
-
-        function inicializarMapa() {
-            var ubicacion = JSON.parse('{{ ubicacion | tojson | safe }}');
+        function inicializarMapa(latitud, longitud) {
             mapboxgl.accessToken = 'pk.eyJ1IjoiZ2EtZWR1YXJkbyIsImEiOiJjbDVmNzQyY3kwaHJpM2pvM29lOWVuZnVlIn0.a20bgkRxwewC43RomqCQ9g';
-
-            mapboxgl.setRTLTextPlugin('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.2.3/mapbox-gl-rtl-text.js');
-            
             map = new mapboxgl.Map({
                 container: 'map',
                 style: 'mapbox://styles/mapbox/satellite-streets-v12',
-                center: [ubicacion[1], ubicacion[0]],
-                zoom: zoomy,
-                projection: 'globe',
-                maxZoom: 18, // Limitar el zoom máximo
-                minZoom: 1,  // Establecer un zoom mínimo
-                attributionControl: false // Desactivar el control de atribución para mejorar el rendimiento
+                center: [longitud, latitud],
+                zoom: 0.8,  // Cambiado a un valor inicial más apropiado
+                projection: 'globe'
             });
 
-            // Añadir el control de atribución en una posición personalizada
-            map.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
+            map.on('load', function () {
+                puntoInicial = [longitud, latitud];
+                puntosRuta.push(puntoInicial); // Añadir el punto inicial a la ruta
 
-            // Optimizar el manejo de eventos
-            map.on('movestart', function() {
-                // Reducir la calidad de la imagen durante el movimiento
-                map.getCanvas().style.imageRendering = 'pixelated';
-            });
+                // Marcador inicial con icono predeterminado
+                marcadorInicial = new mapboxgl.Marker({
+                    color: "#3bb2d0",
+                    scale: 0.8
+                })
+                    .setLngLat(puntoInicial)
+                    .addTo(map);
 
-            map.on('moveend', function() {
-                // Restaurar la calidad de la imagen después del movimiento
-                map.getCanvas().style.imageRendering = 'auto';
-            });
+                // Marcador actual (personalizado)
+                var elActual = document.createElement('div');
+                elActual.className = 'marker actual';
+                marcadorActual = new mapboxgl.Marker(elActual)
+                    .setLngLat(puntoInicial)
+                    .addTo(map);
 
-            marker = new mapboxgl.Marker()
-                .setLngLat([ubicacion[1], ubicacion[0]])
-                .addTo(map);
-
-            map.on('zoom', function () {
-                zoomy = map.getZoom();
-                $("#sliderHandle").slider("value", zoomy);
-                $("#custom-handle").text(zoomy.toFixed(1));
-            });
-
-            map.on('render', function() {
-                if (map.loaded()) {
-                    var fps = Math.round(map.getFrameRate());
-                    if (fps < 15) {
-                        map.setStyle('mapbox://styles/mapbox/light-v10'); // Cambiar a un estilo más ligero
+                // Inicializar la fuente de datos para la ruta
+                map.addSource('rutaSource', {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        properties: {},
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: puntosRuta
+                        }
                     }
-                }
+                });
+
+                // Añadir la capa de la línea
+                map.addLayer({
+                    id: 'rutaLayer',
+                    type: 'line',
+                    source: 'rutaSource',
+                    layout: {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-color': '#007cbf',
+                        'line-width': 3
+                    }
+                });
+
+                lineaRuta = map.getSource('rutaSource');
+
+                // Asegurarse de que los marcadores sean visibles
+                setTimeout(() => {
+                    marcadorInicial.addTo(map);
+                    marcadorActual.addTo(map);
+
+                    // Cambiar suavemente a zoom 5 después de 2 segundos
+                    setTimeout(() => {
+                        map.flyTo({
+                            center: puntoInicial,
+                            zoom: 4,
+                            duration: 3000, // duración de 3 segundos
+                            essential: true // esto asegura que la animación se realice incluso en dispositivos móviles
+                        });
+                        setTimeout(() => {
+                            zoomy = 3; // Actualizar la variable zoomy después de la animación
+                            actualizarSlider(); // Actualizar el slider
+                        }, 5000);
+                    }, 2000);
+                }, 1000);
+
+                // Añadir evento para actualizar el slider cuando el zoom cambia
+                map.on('zoomend', function() {
+                    if (!actualizandoZoom) {
+                        zoomy = Math.round(map.getZoom() * 10) / 10; // Redondear a 1 decimal
+                        actualizarSlider();
+                    }
+                });
             });
         }
 
+        function actualizarUbicacion() {
+            fetch('/actualizar_ubicacion')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.latitud && data.longitud) {
+                        var nuevoPunto = [data.longitud, data.latitud];
+                        
+                        document.getElementById('latitud').innerText = "Lat.: " + data.latitud.toFixed(4);
+                        document.getElementById('longitud').innerText = "Long: " + data.longitud.toFixed(4);
 
+                        // Actualizar marcador actual
+                        marcadorActual.setLngLat(nuevoPunto);
 
+                        // Añadir el nuevo punto a la ruta
+                        puntosRuta.push(nuevoPunto);
 
+                        // Actualizar línea de ruta
+                        lineaRuta.setData({
+                            type: 'Feature',
+                            properties: {},
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: puntosRuta
+                            }
+                        });
+
+                        console.log('Ubicación actualizada:', nuevoPunto);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function calcularCaminoCorto(inicio, fin) {
+            var d = 180 / Math.PI;
+            var camino = [];
+            var n = 100; // número de puntos intermedios
+
+            for (var i = 0; i <= n; i++) {
+                var f = i / n;
+                var A = Math.sin((1 - f) * d) / Math.sin(d);
+                var B = Math.sin(f * d) / Math.sin(d);
+                var x = A * Math.cos(inicio[1] / d) * Math.cos(inicio[0] / d) + B * Math.cos(fin[1] / d) * Math.cos(fin[0] / d);
+                var y = A * Math.cos(inicio[1] / d) * Math.sin(inicio[0] / d) + B * Math.cos(fin[1] / d) * Math.sin(fin[0] / d);
+                var z = A * Math.sin(inicio[1] / d) + B * Math.sin(fin[1] / d);
+                var lat = Math.atan2(z, Math.sqrt(x * x + y * y)) * d;
+                var lon = Math.atan2(y, x) * d;
+                camino.push([lon, lat]);
+            }
+
+            return camino;
+        }
 
         function centrarMapa() {
-
-            if (map && marker) {
-                if (screen.width < 1200) {
-                    document.getElementById('cerrar-aside').click()
+            if (map && marcadorActual) {
+                var currentPosition = marcadorActual.getLngLat();
+                if (/Mobi|Android/i.test(navigator.userAgent)) {
+                    map.easeTo({
+                        center: [currentPosition.lng, currentPosition.lat],
+                        zoom: zoomy,
+                        duration: 2000,
+                        essential: true
+                    });
+                } else {
+                    map.flyTo({
+                        center: [currentPosition.lng, currentPosition.lat],
+                        zoom: zoomy,
+                        duration: 1000
+                    });
                 }
-                map.flyTo({
-                    center: [nuevaLongitud, nuevaLatitud],
-                    zoom: zoomy,
-                    duration: 1000,
-
-                });
             }
-            document.getElementById('cerrar-aside').click()
-            borrar_xml()
+            if (screen.width < 1200) {
+                document.getElementById('cerrar-aside').click();
+            }
+            borrar_xml();
         }
 
         function go_zoom() {
-            if (map && marker) {
-
-                map.flyTo({
-                    /*   center: [nuevaLongitud, nuevaLatitud], */
+            if (map && !actualizandoZoom) {
+                actualizandoZoom = true;
+                map.easeTo({
                     zoom: zoomy,
-                    speed: 0.2,
-
+                    duration: 1000
                 });
+                setTimeout(() => { actualizandoZoom = false; }, 1100);
             }
         }
 
-        $(function () {
+        function inicializarSlider() {
             var handle = $("#custom-handle");
-            $("#sliderHandle").slider({
+            sliderHandle = $("#sliderHandle").slider({
                 range: 'min',
                 min: 0,
-                max: 23,
-                value: 0.8,
+                max: 22,
+                value: zoomy,
                 step: 0.1,
                 create: function () {
                     handle.text($(this).slider("value").toFixed(1));
                 },
                 slide: function (event, ui) {
-                    handle.text(ui.value.toFixed(1));
-                    zoomy = ui.value;
-                    go_zoom();
+                    if (!actualizandoSlider) {
+                        zoomy = ui.value;
+                        handle.text(zoomy.toFixed(1));
+                        actualizandoSlider = true;
+                        map.setZoom(zoomy);
+                        setTimeout(() => { actualizandoSlider = false; }, 100);
+                    }
                 }
             });
 
-            // Hacer el slider táctil
-            $("#sliderHandle").draggable();
-
-            // Ajustar el tamaño del slider para dispositivos móviles
             if (/Mobi|Android/i.test(navigator.userAgent)) {
                 $("#sliderHandle").css({
-                    'height': '30px',
+                    'height': '40px',
                     'touch-action': 'none'
                 });
                 $(".ui-slider-handle").css({
-                    'width': '40px',
-                    'height': '40px',
-                    'top': '-5px',
-                    'margin-left': '-20px'
+                    'width': '50px',
+                    'height': '50px',
+                    'top': '-10px',
+                    'margin-left': '-25px'
                 });
             }
-        });
-
-
-
-        document.addEventListener('DOMContentLoaded', function() {
-            inicializarMapa();
-            
-            // Ajustar la frecuencia de actualización según el tipo de dispositivo
-            var intervaloActualizacion = /Mobi|Android/i.test(navigator.userAgent) ? 3000 : 1000;
-            setInterval(actualizarUbicacion, intervaloActualizacion);
-        });
-
-
-        function limpiar_caja() {
-            document.getElementById('caja-buscar').value = ""
-            document.getElementById('caja-buscar').focus()
-
         }
 
+        function limpiar_caja() {
+            document.getElementById('caja-buscar').value = "";
+            document.getElementById('caja-buscar').focus();
+            
+            // Ocultar la iteración de datos-ciudad
+            var ciudadDiv = document.getElementById('ciudad');
+            if (ciudadDiv) {
+                ciudadDiv.style.display = 'none';
+            }
+        }
 
+        function actualizarSlider() {
+            if (sliderHandle && !actualizandoSlider) {
+                actualizandoSlider = true;
+                sliderHandle.slider("value", zoomy);
+                $("#custom-handle").text(zoomy.toFixed(1));
+                setTimeout(() => { actualizandoSlider = false; }, 100);
+            }
+        }
 
+        // Inicializar el mapa y la ruta
+        document.addEventListener('DOMContentLoaded', function () {
+            fetch('/actualizar_ubicacion')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.latitud && data.longitud) {
+                        inicializarMapa(data.latitud, data.longitud);
+                        setInterval(actualizarUbicacion, 1000); // Actualizar cada 5 segundos
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            
+        });
+
+        // Asegúrate de que esta función se llame cuando el documento esté listo
+        $(document).ready(function() {
+            inicializarSlider();
+        });
+
+        map.on('zoom', function() {
+            zoomy = Math.round(map.getZoom() * 10) / 10;  // Redondear a 1 decimal
+            actualizarSlider();
+        });
+
+        document.getElementById('zoom-slider').addEventListener('input', function() {
+            zoomy = parseFloat(this.value);
+            map.zoomTo(zoomy, { duration: 0 });
+        });
+
+        // Asegúrate de que esta función se llame cuando el mapa esté listo
+        map.on('load', function() {
+            inicializarSlider();
+            
+            map.on('zoomend', function() {
+                if (!actualizandoSlider) {
+                    zoomy = Math.round(map.getZoom() * 10) / 10;
+                    actualizarSlider();
+                }
+            });
+        });
+
+        // Elimina o comenta esta línea si existe, ya que ahora manejamos el zoom en el evento 'zoomend'
+        // map.on('zoom', function() { ... });
+
+        function afterRequestHandler(element) {
+            element.blur();
+            mostrarCiudad();
+        }
+
+        function mostrarCiudad() {
+            var ciudadDiv = document.getElementById('ciudad');
+            if (ciudadDiv) {
+                ciudadDiv.style.display = 'block';
+            }
+        }
+
+        function limpiar_caja() {
+            document.getElementById('caja-buscar').value = "";
+            document.getElementById('caja-buscar').focus();
+            
+            // Ocultar la iteración de datos-ciudad
+            var ciudadDiv = document.getElementById('ciudad');
+            if (ciudadDiv) {
+                ciudadDiv.style.display = 'none';
+            }
+        }
 
     </script>
 </body>

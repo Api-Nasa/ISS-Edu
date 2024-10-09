@@ -1,5 +1,5 @@
 {% for i in range(ciudades|length) %}
-<div id="{{ciudades[i][0]}}" onclick="localizar('{{i}}')" style="border: 1px solid whitesmoke;border-radius: 1em;margin-bottom: 0.5em;padding: 1em;background-color:rgb(60, 61, 61);cursor: pointer;">
+<div id="{{ciudades[i][0]}}" onclick="localizar('{{i}}', zoomy)" style="border: 1px solid whitesmoke;border-radius: 1em;margin-bottom: 0.5em;padding: 1em;background-color:rgb(60, 61, 61);cursor: pointer;">
     <h4>{{ ciudades[i][0] }} longitud: {{ ciudades[i][1] }} latitud: {{ ciudades[i][2] }}</h4>
 </div>
 {% endfor %}
@@ -10,7 +10,7 @@
 
  <script>
 
-    function localizar(item){
+    function localizar(item, zoom){
         var lugares = JSON.parse('{{ ciudades | tojson | safe }}');
     
         // VUELA A COORDENADAS DE ciudad encontrada
@@ -24,12 +24,12 @@
             if (/Mobi|Android/i.test(navigator.userAgent)) {
                 map.jumpTo({
                     center: [long, lat],
-                    zoom: 8
+                    zoom: zoom
                 });
             } else {
                 map.flyTo({
                     center: [long, lat],
-                    zoom: 8,
+                    zoom: zoom,
                     speed: 0.2,
                 });
             }

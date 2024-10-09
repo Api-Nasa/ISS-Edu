@@ -26,10 +26,10 @@
  }
 
  .marker {
-     background-image: url('/static/icono_azul.png');
+     background-image: url('/static/images/iss.png');
      background-size: cover;
-     width: 12px;
-     height: 12px;
+     width: 40px;
+     height: 40px;
      border-radius: 50%;
      cursor: pointer;
  }

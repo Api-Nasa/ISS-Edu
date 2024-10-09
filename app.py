@@ -69,16 +69,18 @@ def obtener_y_procesar_datos_xml():
         print(f"Error al obtener o procesar el archivo XML: {str(e)}")
         return [], [], []
 
-
-
+@app.after_request
+def add_header(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
 
 @app.route('/mapa')
 def mostrar_mapa():
     ubicacion = obtener_ubicacion_iss()
     lista, latitudes, longitudes = obtener_y_procesar_datos_xml()
     return render_template('mapa.html', ubicacion=ubicacion, lista=lista)
-
-
 
 @app.route('/')
 def inicio():
