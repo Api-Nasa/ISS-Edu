@@ -4,76 +4,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IIS | Edu</title>
+    <title>Mapa de Trayectorias en Tiempo Real de la ISS | Seguimiento Satelital</title>
+    <meta name="description" content="Visualiza la ubicación en tiempo real de la Estación Espacial Internacional (ISS) en nuestro mapa interactivo. Seguimiento satelital preciso y actualizado.">
+    <meta name="author" content="Eduardo Cabrera">
+    <link rel="icon" href="{{url_for('static',filename='images/favicon.ico')}}" type="image/x-icon">
+    
+    <!-- Precargar recursos críticos -->
+    <link rel="preload" href="{{url_for('static',filename='css/index.css')}}" as="style">
+    <link rel="preload" href="https://res.cloudinary.com/dquxfl0fe/video/upload/v1728337570/pruebas/iis_x5sgiy.mp4" as="video" type="video/mp4">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://iss-edu.vercel.app/">
+    <meta property="og:title" content="Mapa de Trayectorias en Tiempo Real de la ISS">
+    <meta property="og:description" content="Visualiza la ubicación en tiempo real de la Estación Espacial Internacional (ISS) en nuestro mapa interactivo.">
+    <meta property="og:image" content="{{url_for('static',filename='images/edu-300x300.png')}}">
+    <meta property="og:image:width" content="300">
+    <meta property="og:image:height" content="300">
+    <meta property="og:site_name" content="Trayectorias ISS">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@CabreraBlazquez">
+    <meta name="twitter:creator" content="@CabreraBlazquez">
+    <meta name="twitter:title" content="Trayectorias ISS en Tiempo Real">
+    <meta name="twitter:description" content="Visualiza la ubicación en tiempo real de la Estación Espacial Internacional">
+    <meta name="twitter:image" content="{{url_for('static',filename='images/edu-300x300.png')}}">
+
+    <link rel="canonical" href="https://iss-edu.vercel.app/">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="keywords" content="ISS, NASA, trayectoria, mapa en tiempo real, estación espacial internacional, órbita terrestre, seguimiento satelital, espacio, geolocalización">
+
+    <!-- Control de caché -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <!-- Hojas de estilo -->
     <link rel="stylesheet" href="{{url_for('static',filename='css/index.css')}}">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.12.1/css/all.css" crossorigin="anonymous">
 
+    <!-- Estilos críticos inline -->
     <style>
-        body {
-            background-color: black;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
-        }
-
-        .video-container video {
-            animation: fadeIn 2s ease-in;
-        }
-
-        .btn-clicked {
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        .loading-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 9999;
-        }
-
-        .loading-spinner {
-            position: absolute;
-            top: 60%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: translate(-50%, -50%) rotate(0deg);
-            }
-
-            100% {
-                transform: translate(-50%, -50%) rotate(360deg);
-            }
-        }
+        body { background-color: black; }
+        .video-container video { animation: fadeIn 2s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 9999; }
+        .loading-spinner { position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%); width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
     </style>
 </head>
 
 <body>
     <section class="showcase">
         <div class="video-container">
-
-            <video src="https://res.cloudinary.com/dquxfl0fe/video/upload/v1728337570/pruebas/iis_x5sgiy.mp4" autoplay
-                muted loop></video>
+            <video src="https://res.cloudinary.com/dquxfl0fe/video/upload/v1728337570/pruebas/iis_x5sgiy.mp4" 
+                   preload="none" 
+                   autoplay muted loop></video>
         </div>
         <div class="content">
             <h1>International Space station</h1>
@@ -83,10 +70,10 @@
     </section>
 
     <section id="app" style="margin-bottom: 10vh;">
-        <a href="{{url_for('mostrar_mapa')}}" class="btn"  id="openAppBtn">Abrir la Aplicación ISS</a>
+        <a href="{{url_for('mostrar_mapa')}}" class="btn" id="openAppBtn">Abrir la Aplicación ISS</a>
 
         <br>
-        <p >
+        <p>
             Mapbox | Maps, Navigation, Search, and Data.
         </p>
 
@@ -104,8 +91,8 @@
         <div class="loading-spinner"></div>
     </div>
 
-    <script>
-        document.getElementById('more').addEventListener('click', function() {
+    <script defer>
+        document.getElementById('more').addEventListener('click', function () {
             window.scrollTo({
                 top: document.body.scrollHeight,
                 behavior: 'smooth'
@@ -113,7 +100,7 @@
         });
 
         document.getElementById('openAppBtn').addEventListener('click', function (event) {
-            document.getElementById('more').style.display="none"
+            document.getElementById('more').style.display = "none"
             window.scrollTo({
                 top: 0,
                 behavior: 'smooth'
@@ -134,7 +121,7 @@
 
 
 
-       
+
 
 
 

@@ -2,231 +2,1067 @@
 <html>
 
 <head>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <meta charset="utf-8" />
-    <title>Mapa de la ISS</title>
-    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-    <link rel="stylesheet" href="{{url_for('static',filename='css/mapa.css')}}">
-    <script src='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js'></script>
+    <title>Mapa en Tiempo Real de la Estación Espacial Internacional (ISS) | Seguimiento Satelital</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description"
+        content="Visualiza la ubicación en tiempo real de la ISS con nuestro mapa interactivo. Seguimiento preciso y actualizado de la trayectoria de la Estación Espacial Internacional.">
+    <meta name="keywords"
+        content="ISS, mapa en tiempo real, estación espacial internacional, seguimiento satelital, órbita terrestre, NASA">
+    <meta id="my-data" data-name='{{astronautas|tojson|safe}}'>
+
+
     <link href='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css' rel='stylesheet' />
-    <!-- UIkit CSS -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js'></script>
+    <link rel="stylesheet" href="{{url_for('static',filename='css/mapa.css')}}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/css/uikit.min.css" />
-    <!-- UIkit JS -->
+    <link rel="stylesheet" href="{{url_for('static',filename='css/panel.css')}}">
+    <link rel="stylesheet" href="{{url_for('static',filename='css/slider.css')}}" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.10.4/themes/flick/jquery-ui.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.13/dist/js/uikit-icons.min.js"></script>
-    <!-- include the jQuery and jQuery UI scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
     <script
         src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-ui-Slider-Pips/1.11.4/jquery-ui-slider-pips.min.js"></script>
-    <link rel="stylesheet" href="{{url_for('static',filename='css/slider.css')}}" />
-    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
-    <script src="{{url_for('static',filename='js/ciudades.js')}}"></script>
-    <script src="{{url_for('static',filename='js/contador.js')}}"></script>
 
 
-    <!-- plus a jQuery UI theme, here I use "flick" -->
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.10.4/themes/flick/jquery-ui.css">
-
-    <style>
-        @keyframes parpadeo {
-            0% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0;
-            }
-
-            100% {
-                opacity: 1;
-            }
-        }
-
-        .alerta {
-            animation: parpadeo 1s infinite;
-            background-color: red;
-            color: white;
-            padding: 10px;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000;
-            border-radius: 5px;
-            display: none;
-        }
-    </style>
 
 </head>
 
 <body>
-
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
 
     <!-- This is a button toggling the off-canvas  BOTON QUE EXPANDE DESPLEGABLE OPCIONES-->
-    <button uk-toggle="target: #my-id" type="button" style="z-index: 1;position: fixed;border-radius: 0.5em;
-    top:3em;left: 3em; font-size: 1.5em;padding: 0.5em;cursor: pointer;">
+    <button id="opciones" uk-toggle="target: #my-id" type="button" style="position: fixed;border-radius: 0.5em;
+    top:3em;left: 3em; font-size: 1.5em;padding: 0.5em;cursor: pointer;opacity: 0;z-index: 1;">
         Ver opciones
     </button>
+
+    <div id="panel-astronautas" class="panel-dragable" style="display:none;top: 50%;
+        left: 50%;padding: 0.5em;position: absolute;
+        transform: translate(-50%, -50%);width:300px; max-width: 70%;">
+        <div class="panel-header">
+            <h3>Astronautas en la ISS</h3>
+
+            <button class="cerrar-panel">&times;</button>
+        </div>
+
+        <ul id="lista-astro" class="lista-astronautas">
+            {% for astronauta in astronautas %}
+            <li>
+                <a href="#" class="astronauta-link" data-nombre="{{ astronauta.name }}">{{ astronauta.name }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+        <div id="detalles-astronauta" style="display:none;"></div>
+    </div>
+
+    <div id="panel-astronauta" class="panel-dragable"
+        style="display:none; position: absolute; top: 50px; left: 50px; width: 300px; background-color: white; border: 1px solid #ccc; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000;">
+        <div class="panel-header"
+            style="cursor: move; padding: 5px; background-color: #f0f0f0; border-bottom: 1px solid #ccc;">
+            <span>Detalles del Astronauta</span>
+            <button onclick="cerrarPanelAstronauta()" style="float: right;">&times;</button>
+        </div>
+        <div id="detalles-astronauta"></div>
+    </div>
+
+
+
+
 
 
 
     <!-- This is the off-canvas  DESPLEGABLE DE OPCIONES-->
-    <div id="my-id" uk-offcanvas>
+    <div id="my-id" uk-offcanvas " >
 
 
-        <div class="uk-offcanvas-bar" style="width: 600px !important;">
+        <div  class=" uk-offcanvas-bar" style="width: 600px !important;">
 
-            <ul style="z-index: 1;float: left; margin-bottom: 2em;">
-                <li id="latitud" style="z-index: 1;font-size: 1em;"></li>
-                <li id="longitud" style="z-index: 1;font-size: 1em;"></li>
-                <li id="contador_estancia" style="color: yellow;z-index: 1;">contador</li>
-                <li id="actualizaciones" style="color: orange;z-index: 1;">Actualizaciones: 0 / 1000</li>
-            </ul>
+        <ul style="z-index: 1;float: left; margin-bottom: 1em;">
+            <li id="latitud" style="z-index: 1;font-size: 1em;"></li>
+            <li id="longitud" style="z-index: 1;font-size: 1em;"></li>
+            <li id="contador" style="color: yellow;z-index: 1;">contador</li>
+            <li id="contador-actualizaciones" style="z-index: 1;">contador</li>
+            <li id="altura" style="z-index: 1;font-size: 1em;"></li>
 
-            <button onclick="centrarMapa()" style="z-index: 1;border-radius: 0.5em;width: 80%;
-                font-size: 1.5em;padding: 0.5em;display: block;margin-bottom: 1em;cursor:pointer;">Trayectoria ISS en tiempo real</button>
-            <button onclick="lista_xml()" style="z-index: 1;border-radius: 0.5em;width: 80%;
-            font-size: 1.5em;padding: 0.5em;display: block;margin-bottom: 1em;cursor: pointer;">Predicción de
-                Trayectoria y días anteriores</button>
-            <button id="borrar_xml" onclick="borrar_xml()" style="z-index: 1;border-radius: 0.5em;width: 80%;
-            font-size: 1.5em;padding: 0.5em;display: block;margin-bottom: 1em;cursor: pointer;display: none;">Borrar
-                puntos predicciones</button>
+            <li id="velocidad" style="z-index: 1;font-size: 1em;">
+                Velocidad: <span id="velocidad-valor"></span> km/h
+                <progress id="velocidad-barra" value="0" max="100"></progress>
+                <span id="velocidad-rango"></span>
+            </li>
+        </ul>
 
-            <div class="slider-container">
-                <div id="sliderHandle">
-                    <div id="custom-handle" class="ui-slider-handle"></div>
-                </div>
+
+
+        <div class="slider-container">
+            <div id="sliderHandle">
+                <div id="custom-handle" class="ui-slider-handle"></div>
             </div>
-            <input id="hideKeyboard" style="position: absolute; left: 0px; top: -20px; z-index: -1;" type="text"
-                name="hideKeyboard" readonly="readonly" />
-            <input id="caja-buscar" onkeypress="return event.keyCode != 13;" class="uk-input"
-                placeholder="busca (Pais,Ciudad,Rio,Lago...)" autocomplete="off" type="text"
-                style="width: 80%;margin-top: -1.2em;" name="buscador" hx-get="/obtener_coordenadas_ciudad"
-                hx-target="#ciudad" hx-trigger="keyup changed delay:1000ms" hx-swap="innerHTML"
-                hx-on::after-request="afterRequestHandler(this)">
-
-            <span id="limpiar" onclick="limpiar_caja()" style=" font-size: 2.6em; 
-                 border: solid 1px rgb(151, 149, 149);background-color: darkgray;cursor: pointer;">X</span>
-            <!-- siguiente div es zona de inyección hTMX -->
-            <div id="ciudad" style="margin-top:0.3em;width: 85%;"></div>
-
-
-
-
-
-
-
-
-            <ul uk-accordion="collapsible: true" style="background-color:rgb(60, 61, 61);width: 95%;">
-                <li>
-                    <a class="uk-accordion-title"
-                        style="background-color:rgb(60, 61, 61);padding: 0.5em;border-bottom: 1px solid white;width: 95%;">Tags
-                        favoritos</a>
-                    <div class="uk-accordion-content" style="width: 95%;">
-                        <div id="SA" class="uk-badge ciudades" style="color:white !important">America del Sur</div>
-                        <div id="NA" class="uk-badge ciudades" style="color:white !important">America del Norte</div>
-                        <div id="dublin" class="uk-badge ciudades" style="color:white !important">Dublín</div>
-                        <div id="londres" class="uk-badge ciudades" style="color:white !important">London</div>
-                        <div id="trinidad" class="uk-badge ciudades" style="color:white !important">Trinidad y Tobago
-                        </div>
-                        <div id="habana" class="uk-badge ciudades" style="color:white !important">La Habana</div>
-                        <div id="vancouver" class="uk-badge ciudades" style="color:white !important">Vancouver</div>
-                        <div id="madrid" class="uk-badge ciudades" style="color:white !important">Madrid</div>
-                        <div id="huelva" class="uk-badge ciudades" style="color:white !important">Huelva</div>
-                        <div id="paris" class="uk-badge ciudades" style="color:white !important">París</div>
-                        <div id="caracas" class="uk-badge ciudades" style="color:white !important">Caracas</div>
-                        <div id="mallorca" class="uk-badge ciudades" style="color:white !important">Mallorca</div>
-                    </div>
-                </li>
-                <li>
-                    <a class="uk-accordion-title"
-                        style="background-color:rgb(60, 61, 61);padding: 0.5em;width: 95%;border-bottom: 1px solid white">Consultar
-                        días de visibilidad</a>
-                    <div class="uk-accordion-content" style="width: 95%;">
-                        <form style="width: 100%;">
-
-
-                            <select id="country" class="uk-select" name="country" required="" width="20" title="Country"
-                                style="outline: none;" hx-get="/ciudades" hx-target="#select-ciudades"
-                                hx-trigger="change" hx-swap="innerHTML ">
-                                <option value="">Seleccionar País</option>
-                                <option value="Argentina">Argentina</option>
-                                <option value="Australia">Australia</option>
-                                <option value="Brazil">Brasil</option>
-                                <option value="Canada">Canadá</option>
-                                <option value="Chile">Chile</option>
-                                <option value="China">China</option>
-                                <option value="Colombia">Colombia</option>
-                                <option value="Ecuador">Ecuador</option>
-                                <option value="Egypt">Egipto</option>
-                                <option value="France">Francia</option>
-                                <option value="Germany">Alemania</option>
-                                <option value="India">India</option>
-                                <option value="Indonesia">Indonesia</option>
-                                <option value="Italy">Italia</option>
-                                <option value="Japan">Japón</option>
-                                <option value="Kenya">Kenia</option>
-                                <option value="Mexico">México</option>
-                                <option value="Morocco">Marruecos</option>
-                                <option value="New_Zealand">Nueva Zelanda</option>
-                                <option value="Nigeria">Nigeria</option>
-                                <option value="Peru">Perú</option>
-                                <option value="Russia">Rusia</option>
-                                <option value="Saudi_Arabia">Arabia Saudita</option>
-                                <option value="South_Africa">Sudáfrica</option>
-                                <option value="South_Korea">Corea del Sur</option>
-                                <option value="Spain">España</option>
-                                <option value="United_Arab_Emirates">Emiratos Árabes Unidos</option>
-                                <option value="United_Kingdom">Reino Unido</option>
-                                <option value="United_States">Estados Unidos</option>
-                            </select>
-                            </select>
-                            <div id="select-ciudades"></div>
-                            <div id="pasos" style="width: 100% !important;"></div>
-
-                        </form>
-                    </div>
-                </li>
-
-            </ul>
-            <button id="cerrar-aside" class="uk-offcanvas-close" type="button" uk-close></button>
-
         </div>
+
+
+
+
+
+
+
+
+
+        <ul uk-accordion="collapsible: true"
+            style="background-color:rgb(60, 61, 61);width: 95%;position: relative; margin-top: 25vh;">
+
+            <li>
+                <a class="uk-accordion-title"
+                    style="background-color:rgb(60, 61, 61);padding: 0.5em;border-bottom: 1px solid white;width: 95%;">Trayectorias</a>
+                <div class="uk-accordion-content"
+                    style="display: flex;flex-direction: column;align-items: center; width: 95%;">
+                    <button onclick="ver_solo_estacion()" style="z-index: 1;border-radius: 0.5em;width: 80%;
+                    font-size: 1.5em;padding: 0.5em;display: block;margin-bottom: 1em;cursor:pointer ;">
+                        Trayectoria IIS en tiempo real</button>
+                    <button onclick="lista_xml()" style="z-index: 1;border-radius: 0.5em;width: 80%;
+                    font-size: 1.5em;padding: 0.5em;display: block;margin-bottom: 1em;cursor: pointer;">
+                        Demo patrón Trayectoria publicada XML</button>
+                    <button onclick="demo_estacion()" type="button" style="z-index: 1;border-radius: 0.5em;width: 80%;
+                    font-size: 1.5em;padding: 0.5em;display: block;margin-bottom: 1em;cursor: pointer;">
+                        Ver Animación Trayectoria publicada XML
+                    </button>
+                    <button id="borrar_xml" onclick="borrar_xml()"
+                        style="background-color: blueviolet;color: white; z-index: 1;border-radius: 0.5em;width: 80%;
+                    font-size: 1.5em;padding: 0.5em;display: block;margin-bottom: 1em;cursor: pointer;display: none;">Borrar/detener
+                        animaciones</button>
+
+                </div>
+            </li>
+            <li>
+                <a class="uk-accordion-title"
+                    style="background-color:rgb(60, 61, 61);padding: 0.5em;border-bottom: 1px solid white;width: 95%;">Buscador/localizador
+                    (paises,ciudades,rios,etc...)</a>
+                <input id="hideKeyboard" style="position: absolute; left: 0px; top: -20px; z-index: -1;" type="text"
+                    name="hideKeyboard" readonly="readonly" />
+                <div id="buscar_lugares" class="uk-accordion-content" style="width: 95%" ;>
+
+                    <input id="caja-buscar" autofocus onkeypress="return event.keyCode != 13;" class="uk-input"
+                        placeholder="busca (Pais,Ciudad,Rio,Lago...)" autocomplete="off" type="text"
+                        style="width: 80%;margin-top: -1.2em;" name="buscador" hx-get="/obtener_coordenadas_ciudad"
+                        hx-target="#ciudad" hx-trigger="keyup changed delay:1000ms" hx-swap="innerHTML "
+                        hx-on::after-request="this.blur()">
+
+                    <span id="limpiar" onclick="limpiar_caja()" style=" font-size: 2.6em; 
+                         border: solid 1px rgb(151, 149, 149);background-color: darkgray;cursor: pointer;">X</span>
+                    <!-- siguiente div es zona de inyección hTMX -->
+                    <div id="ciudad" style="width: 85%; margin: 0 auto;"></div>
+                </div>
+            </li>
+            <li>
+                <a class="uk-accordion-title"
+                    style="background-color:rgb(60, 61, 61);padding: 0.5em;border-bottom: 1px solid white;width: 95%;">Tags
+                    favoritos</a>
+                <div class="uk-accordion-content" style="width: 95%;">
+                    <div id="Dublin" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Dublín</div>
+                    <div id="Mallorca" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Mallorca</div>
+                    <div id="Caracas" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Caracas</div>
+                    <div id="Huelva" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Huelva</div>
+                    <div id="Madrid" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Madrid</div>
+                    <div id="Trinidad" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Trinidad y Tobago
+                    </div>
+                    <div id="Londres" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Londres</div>
+                    <div id="Piramides_Giza" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Pirámides de Giza
+                    </div>
+                    <div id="Machu_Picchu" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Machu Picchu</div>
+                    <div id="Taj_Mahal" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Taj Mahal</div>
+                    <div id="Gran_Muralla" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Gran Muralla China
+                    </div>
+                    <div id="Petra" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Petra</div>
+                    <div id="Estatua_Libertad" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Estatua de la
+                        Libertad</div>
+                    <div id="Torre_Eiffel" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Torre Eiffel</div>
+                    <div id="Toledo" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Toledo</div>
+                    <div id="Acropolis_Atenas" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Acrópolis de Atenas
+                    </div>
+                    <div id="Coliseo_Roma" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Coliseo de Roma
+                    </div>
+                    <div id="Alhambra" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Alhambra</div>
+                    <div id="Angkor_Wat" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Angkor Wat</div>
+                    <div id="Sagrada_Familia" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Sagrada Familia
+                    </div>
+                    <div id="Gobekli_Tepe" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Göbekli Tepe</div>
+                    <div id="Stonehenge" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Stonehenge</div>
+                    <div id="Kaaba" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Kaaba</div>
+                    <div id="Basilica_San_Pedro" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Basílica de San
+                        Pedro</div>
+                    <div id="Teotihuacan" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Teotihuacán</div>
+                    <div id="Lalibela" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Lalibela</div>
+                    <div id="Cataratas_Victoria" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Cataratas Victoria
+                    </div>
+                    <div id="Bosque_Bwindi" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Bosque Bwindi</div>
+                    <div id="Isla_Pascua" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Isla de Pascua
+                    </div>
+                    <div id="Salar_Uyuni" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Salar de Uyuni
+                    </div>
+                    <div id="Cristo_Redentor" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Cristo Redentor
+                    </div>
+                    <div id="Yellowstone" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Yellowstone</div>
+                    <div id="Cataratas_Niagara" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Cataratas del
+                        Niágara</div>
+                    <div id="Gran_Canon" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Gran Cañón</div>
+                    <div id="Yellowknife" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Yellowknife</div>
+                    <div id="Ciudad_Ur" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Ciudad de Ur</div>
+                    <div id="Monte_Fuji" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Monte Fuji</div>
+                    <div id="Ciudad_Prohibida" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Ciudad Prohibida
+                    </div>
+                    <div id="Bagan" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Bagan</div>
+                    <div id="Cuevas_Ajanta" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Cuevas de Ajanta
+                    </div>
+                    <div id="Cuevas_Ellora" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Cuevas de Ellora
+                    </div>
+                    <div id="Venecia" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Venecia</div>
+                    <div id="Santorini" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Santorini</div>
+                    <div id="Castillo_Neuschwanstein" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Castillo de
+                        Neuschwanstein</div>
+                    <div id="Notre_Dame" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Notre-Dame</div>
+                    <div id="Pompeya" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Pompeya</div>
+                    <div id="Acueducto_Segovia" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Acueducto de
+                        Segovia</div>
+                    <div id="Puerto_Sydney" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Puerto de Sydney
+                    </div>
+                    <div id="Pinguinos_Phillip" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Pingüinos de
+                        Phillip Island</div>
+                    <div id="Gran_Barrera_Coral" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Gran Barrera de
+                        Coral</div>
+
+            </li>
+            <li>
+                <a class="uk-accordion-title"
+                    style="background-color:rgb(60, 61, 61);padding: 0.5em;width: 95%;border-bottom: 1px solid white">Consultar
+                    días de visibilidad</a>
+                <div class="uk-accordion-content" style="width: 95%;">
+                    <form style="width: 100%;">
+
+
+                        <select id="country" class="uk-select" name="country" required="" width="20" title="Country"
+                            style="outline: none;" hx-get="/ciudades" hx-target="#select-ciudades" hx-trigger="change"
+                            hx-swap="innerHTML ">
+                            <option value="">Seleccionar País</option>
+                            <option value="Argentina">Argentina</option>
+                            <option value="Australia">Australia</option>
+                            <option value="Brazil">Brasil</option>
+                            <option value="Canada">Canadá</option>
+                            <option value="Chile">Chile</option>
+                            <option value="China">China</option>
+                            <option value="Colombia">Colombia</option>
+                            <option value="Ecuador">Ecuador</option>
+                            <option value="Egypt">Egipto</option>
+                            <option value="France">Francia</option>
+                            <option value="Germany">Alemania</option>
+                            <option value="India">India</option>
+                            <option value="Indonesia">Indonesia</option>
+                            <option value="Italy">Italia</option>
+                            <option value="Japan">Japón</option>
+                            <option value="Kenya">Kenia</option>
+                            <option value="Mexico">México</option>
+                            <option value="Morocco">Marruecos</option>
+                            <option value="New_Zealand">Nueva Zelanda</option>
+                            <option value="Nigeria">Nigeria</option>
+                            <option value="Peru">Perú</option>
+                            <option value="Russia">Rusia</option>
+                            <option value="Saudi_Arabia">Arabia Saudita</option>
+                            <option value="South_Africa">Sudáfrica</option>
+                            <option value="South_Korea">Corea del Sur</option>
+                            <option value="Spain">España</option>
+                            <option value="United_Arab_Emirates">Emiratos rabes Unidos</option>
+                            <option value="United_Kingdom">Reino Unido</option>
+                            <option value="United_States">Estados Unidos</option>
+                        </select>
+                        </select>
+                        <div id="select-ciudades"></div>
+                        <div id="pasos" style="width: 100% !important;"></div>
+
+                    </form>
+                </div>
+            </li>
+
+            <li>
+                <a class="uk-accordion-title"
+                    style="background-color:rgb(60, 61, 61);padding: 0.5em;width: 95%;border-bottom: 1px solid white">Consultar
+                    Videos interesantes</a>
+                <div class="uk-accordion-content" style="width: 95%;">
+                    <div style="margin: 0 auto" class="uk-grid-small uk-child-width-expand@s uk-text-center" uk-grid>
+                        <!-- This is a button toggling the modal -->
+                        <button id="https://www.youtube.com/embed/0JU4z-iLmGQ?si=e-WWioS1NEroiWOO"
+                            onclick="pasar_src(this.id)" class="uk-button uk-button-default uk-margin-small-right"
+                            type="button" style="min-width: 200px;" uk-toggle="target: #modal-example">
+                            Recorrido por la ISS</button>
+                        <button id="https://www.youtube.com/embed/7c7hgejxiCY?si=aO1maUyQqSfBsClw"
+                            onclick="pasar_src(this.id)" class="uk-button uk-button-default uk-margin-small-right"
+                            type="button" style="min-width: 200px;" uk-toggle="target: #modal-example">
+                            Orbita completa a la Tierra</button>
+                        <button id="https://www.youtube.com/embed/V0DXWZix5V0?si=cKm7YlgtYnAhzVN3"
+                            onclick="pasar_src(this.id)" class="uk-button uk-button-default uk-margin-small-right"
+                            type="button" style="min-width: 200px;" uk-toggle="target: #modal-example">
+                            Así se vive en la ISS</button>
+                        <button id="https://www.youtube.com/embed/lBfzX2FEIPg" onclick="pasar_src(this.id)"
+                            class="uk-button uk-button-default uk-margin-small-right" type="button"
+                            style="min-width: 200px;" uk-toggle="target: #modal-example">
+                            Auroras boreales desde la ISS</button>
+                        <button id="https://www.youtube.com/embed/4Po1gnl02Ls" onclick="pasar_src(this.id)"
+                            class="uk-button uk-button-default uk-margin-small-right" type="button"
+                            style="min-width: 200px;" uk-toggle="target: #modal-example">
+                            vuelo nocturno de la ISS</button>
+                        <button id="https://www.youtube.com/embed/3nlKH3fZmnk" onclick="pasar_src(this.id)"
+                            class="uk-button uk-button-default uk-margin-small-right" type="button"
+                            style="min-width: 200px;" uk-toggle="target: #modal-example">
+                            ISS Timelapse - Bedtime in North America (16 September 2022)</button>
+                        <button id="https://www.youtube.com/embed/3nlKH3fZmnk" onclick="pasar_src(this.id)"
+                            class="uk-button uk-button-default uk-margin-small-right" type="button"
+                            style="min-width: 200px;" uk-toggle="target: #modal-example">
+                            ISS Timelapse - Bedtime in North America (16 September 2022)</button>
+
+
+                    </div>
+
+                    <!-- This is the modal of video-->
+                    <div id="modal-example" uk-modal>
+                        <div class="uk-modal-dialog uk-modal-body">
+                            <h2 id="titulo-video" class=""></h2>
+                            <div class="video-responsive">
+                                <iframe id="myvideo" src="" title="YouTube video player" frameborder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                            </div>
+                            <button onclick="quitar_source()" class="uk-button uk-button-secondary uk-modal-close"
+                                type="button" style="margin-top:1em">Close</button>
+
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- This is the modal of informacion-->
+                    <div id="modal-info" class="uk-modal-container" uk-modal">
+                        <div class="uk-modal-dialog uk-modal-body">
+                            <button onclick="quitar_source()" class="uk-button uk-button-secondary uk-modal-close"
+                                type="button" style="margin-top:1em">Close this window</button>
+                            <h2 id="titulo-iframe" class=""></h2>
+                            <div class="video-responsive">
+                                <iframe id="myinfo" src="" title="YouTube video player" frameborder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                            </div>
+                            <button onclick="quitar_source_video()" class="uk-button uk-button-secondary uk-modal-close"
+                                type="button" style="margin-top:1em">Close</button>
+
+                            </p>
+                        </div>
+                    </div>
+
+
+
+
+
+
+
+
+                </div>
+            </li>
+
+
+        </ul>
+        <button id="cerrar-aside" class="uk-offcanvas-close" type="button" uk-close></button>
+
+    </div>
 
     </div>
 
 
 
 
-    <div id="map"></div>
-    <div id="alerta" class="alerta">¡Se han alcanzado 1000 actualizaciones!</div>
-    <audio id="sonidoAlerta" src="{{url_for('static',filename='sonidos/alerta.mp3')}}" preload="auto"></audio>
-    <script>
-        var map;
-        var marcadorInicial;
-        var marcadorActual;
-        var lineaRuta;
-        var puntoInicial;
-        var zoomy = 1; // Valor inicial de zoom
-        var sliderHandle; // Variable para almacenar el objeto slider
-        var actualizandoZoom = false; // Flag para evitar bucles infinitos
-        var actualizandoSlider = false;
-        var puntosRuta = []; // Array para almacenar todos los puntos de la ruta
+    <div id="map-overlay"
+        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; z-index: 1000;">
+    </div>
+    <div id="map" style="width: 100%; height: 100vh;"></div>
+    <div id="mensaje-parpadeante"
+        style="display: none; position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,0.7); color: white; padding: 10px 20px; border-radius: 5px; font-size: 16px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 1000;">
 
-        function mostrarAlerta() {
-            var alerta = document.getElementById('alerta');
-            var sonido = document.getElementById('sonidoAlerta');
-            alerta.style.display = 'block';
-            sonido.play();
-            setTimeout(function () {
-                alerta.style.display = 'none';
-                sonido.pause();
-                sonido.currentTime = 0;
-            }, 5000);
+        Zoom & click on the station to meet the astronauts.
+
+    </div>
+
+
+
+    <script defer src="{{url_for('static',filename='js/ciudades.js')}}" defer></script>
+    <script defer src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <script>
+
+
+
+        var puntos = []
+        var map, marker;
+        var nuevaLatitud, nuevaLongitud;
+        var zoomy = 0.8;
+        let issMarker;
+        let seguimientoActivado = true; // Mueve esta línea aquí
+        var map;
+        const MAX_POINTS = 100; // Ajusta este número según tus necesidades
+        let issCoordinates = []
+        let lastLongitude = null;
+        var ubicacionInicial;
+        let lastUpdateTime = 0;
+        let posicionInicial;
+        let marcadores = [];
+        const UPDATE_INTERVAL = 3000; // 3 segundos
+        const demoMapStyle = 'mapbox://styles/mapbox/light-v10'; // O cualquier otro estilo que prefieras
+
+        function crearMarcadorISS(lngLat) {
+            console.log('Creando marcador ISS en:', lngLat);
+            if (issMarker) {
+                issMarker.remove(); // Eliminar el marcador existente si lo hay
+            }
+            var el = document.createElement('div');
+            el.className = 'marker-iss';
+            el.style.backgroundImage = 'url(/static/images/iss.png)';
+            el.style.width = '40px';
+            el.style.height = '40px';
+            el.style.backgroundSize = 'contain';
+            el.style.zIndex = 1
+            el.style.cursor = 'pointer';
+
+
+
+            issMarker = new mapboxgl.Marker(el)
+                .setLngLat(lngLat)
+                .addTo(map);
+
+            // Añadir evento de clic al marcador
+            el.onclick = function (e) {
+
+                e.stopPropagation();
+                new mapboxgl.Popup()
+                    .setLngLat(issMarker.getLngLat())
+                    .setHTML('<div><h3>Estación Espacial Internacional</h3>' +
+                        ' <button class="uk-button uk-button-primary" uk-toggle="target: #modal-integrantes" style="margin-bottom:0.5em" onclick="astronautas(this.closest(\'.mapboxgl-popup\'))">Ver integrantes</button></div>')
+                    .addTo(map);
+            };
+
+
+            console.log('Marcador ISS creado:', issMarker);
+
+            return issMarker;
         }
+
+
+
+        function inicializarMapa() {
+            console.log('Inicializando mapa...');
+            ubicacionInicial = JSON.parse('{{ ubicacion | tojson | safe }}');
+            posicionInicial = ubicacionInicial;
+            console.log('Ubicación inicial:', ubicacionInicial);
+
+            mapboxgl.accessToken = 'pk.eyJ1IjoiZ2EtZWR1YXJkbyIsImEiOiJjbDVmNzQyY3kwaHJpM2pvM29lOWVuZnVlIn0.a20bgkRxwewC43RomqCQ9g';
+
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/satellite-streets-v12',
+                center: ubicacionInicial,
+                zoom: zoomy,
+                maxZoom: 22,
+                projection: 'globe'
+            });
+
+            console.log('Instancia del mapa creada');
+
+            map.on('load', function () {
+                console.log('Mapa cargado completamente');
+
+                map.on('dragstart', function () {
+                    seguimientoActivado = false;
+
+                });
+
+                // Inicializar el array de puntos con la ubicación inicial
+                puntos = [ubicacionInicial];
+                issCoordinates = [ubicacionInicial];
+
+                // Añadir fuente y capa para la trayectoria de la ISS
+                map.addSource('trayectoria-iss', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'properties': {},
+                        'geometry': {
+                            'type': 'LineString',
+                            'coordinates': puntos
+                        }
+                    }
+                });
+
+                map.addLayer({
+                    'id': 'linea-iss',
+                    'type': 'line',
+                    'source': 'trayectoria-iss',
+                    'layout': {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    'paint': {
+                        'line-color': '#3FB1CE',
+                        'line-width': 2
+                    }
+                });
+
+
+
+                // Añadir capa para el punto inicial
+                map.addSource('punto-inicial', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': ubicacionInicial
+                        }
+                    }
+                });
+
+                map.addLayer({
+                    'id': 'punto-inicial',
+                    'type': 'circle',
+                    'source': 'punto-inicial',
+                    'paint': {
+                        'circle-radius': 6,
+                        'circle-color': '#3FB1CE'
+                    }
+                });
+
+                // Crear el marcador inicial de la ISS
+                crearMarcadorISS(ubicacionInicial);
+
+                // Añadir evento de zoom
+                map.on('zoom', function () {
+                    zoomy = map.getZoom();
+                    actualizarSlider(zoomy);
+                });
+
+
+
+                // Activar la transición
+                fadeInMap();
+                // Iniciar la actualización de la ubicación
+                actualizarUbicacion();
+
+                // Inicializar la ruta de la ISS
+                initializeISSRoute();
+
+                // Usar un intervalo más largo para dispositivos móviles
+                const interval = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 10000 : 5000;
+                setInterval(actualizarUbicacion, interval);
+
+                // Optimizar el manejo de eventos
+                let throttleTimer;
+                const throttle = (callback, time) => {
+                    if (throttleTimer) return;
+                    throttleTimer = true;
+                    setTimeout(() => {
+                        callback();
+                        throttleTimer = false;
+                    }, time);
+                };
+
+                if (map) {
+                    map.on('move', () => throttle(() => {
+                        // Actualizar UI o realizar otras operaciones costosas aquí
+                    }, 100));
+                }
+            });
+
+            map.on('error', function (e) {
+                console.error('Error en el mapa:', e);
+            });
+
+
+
+
+
+
+
+
+
+            // Verificar si el mapa está cargado correctamente
+            if (map.loaded()) {
+                console.log('Mapa cargado correctamente');
+            } else {
+                console.log('El mapa aún no está cargado');
+                map.on('load', function () {
+                    console.log('Mapa cargado');
+                    
+                });
+        }
+
+
+
+            // Definir la función irAlSitio en el ámbito global
+            let zoomAnterior;
+
+            window.irAlSitio = function (lon, lat, zoom, popupToClose) {
+                if (popupToClose) {
+                    popupToClose.remove();
+        }
+
+                zoomAnterior = map.getZoom(); // Guardamos el zoom actual antes de cambiar
+
+                setTimeout(() => {
+                    map.flyTo({
+                        center: [lon, lat],
+                        zoom: zoom,
+                        duration: 3000,
+                        essential: true,
+                        curve: 1.5,
+                        easing: function (t) {
+                            return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+                        },
+                    });
+                }, 50);
+            };
+
+            window.volverAnterior = function (popupToClose) {
+                if (popupToClose) {
+                    popupToClose.remove();
+                }
+
+
+
+                setTimeout(() => {
+                    map.flyTo({
+                        center: map.getCenter(), // Mantenemos el centro actual
+                        zoom: zoomAnterior,
+                        duration: 3000,
+                        essential: true,
+                        curve: 1.5,
+                        easing: function (t) {
+                            return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+                        },
+                    });
+                }, 50);
+            };
+
+            // Inicializar el mapa
+            map.on('load', function () {
+                zoomAnterior = map.getZoom(); // Guardamos el zoom inicial
+                console.log('Zoom inicial guardado:', zoomAnterior);
+                console.log('Mapa cargado, llamando a añadirMarcadoresFavoritos');
+                añadirMarcadoresFavoritos();
+            });
+
+            function añadirMarcadoresFavoritos() {
+                console.log('Iniciando añadirMarcadoresFavoritos');
+                for (let lugar in ciudades) {
+                    let datos = ciudades[lugar];
+                    console.log(`Creando marcador para ${lugar}:`, datos);
+
+                    let el = document.createElement('div');
+                    el.className = 'marcador-favorito';
+                    el.style.backgroundImage = 'url(/static/images/icono_azul.png)';
+                    el.style.backgroundSize = 'contain';
+                    el.style.width = '20px';
+                    el.style.height = '20px';
+                    el.style.backgroundRepeat = 'no-repeat';
+                    el.style.backgroundPosition = 'center';
+                    el.style.cursor = 'pointer';
+                    el.style.zIndex = '1'
+
+                    let popup = new mapboxgl.Popup({ className: "popup" });
+
+                    let popupContent = `
+            <div style="display:flex; 	flex-direction: column;"> 
+            
+            <h3>${lugar}</h3>
+         
+            <div style="margin-top:-1.5em">
+            <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="irAlSitio(${datos.center[0]}, ${datos.center[1]}, ${datos.zoom}, this.closest('.mapboxgl-popup'))">Ir al sitio</button>
+            <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="informacion('${datos.informacion}', '${lugar}', this.closest('.mapboxgl-popup'))">Más información</button>
+             <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="predecirPasosISS(${datos.center[1]}, ${datos.center[0]}, this.closest('.mapboxgl-popup'))">Predecir pasos ISS</button>
+            <button class="uk-button uk-button-secondary" onclick="volverAnterior(this.closest('.mapboxgl-popup'))">Exit</button>
+            </div>
+            </div>`;
+
+                    popup.setHTML(popupContent);
+
+                    new mapboxgl.Marker(el)
+                        .setLngLat(datos.center)
+                        .setPopup(popup)
+                        .addTo(map);
+
+                    console.log(`Marcador añadido para ${lugar}`);
+                }
+                console.log('Finalizado añadirMarcadoresFavoritos');
+            }
+
+            window.informacion = function (url, lugar, popupToClose) {
+                if (popupToClose) {
+                    popupToClose.remove();
+                }
+                if (url.includes("youtube")) {
+                    document.getElementById('myvideo').setAttribute('src', url);
+                    document.getElementById('titulo-video').innerText = lugar
+                    UIkit.modal('#modal-example').show();
+                }
+                else {
+                    document.getElementById('myinfo').setAttribute('src', url);
+                    document.getElementById('titulo-iframe').innerText = lugar
+                    UIkit.modal('#modal-info').show();
+                }
+
+            }
+         
+            let clickMarker; // Variable global para almacenar el marcador del clic
+
+// Definir el rango base para zoom 7
+const margenGradosBase = 0.25;
+const zoomBase = 7;
+
+function calcularMargenGrados(zoomActual) {
+    // Calculamos la proporción basada en la diferencia de zoom
+    // Un zoom menor resultará en un margen mayor
+    const proporcion = Math.pow(2, zoomBase - zoomActual);
+    return margenGradosBase * proporcion;
+}
+
+function onMapClick(e) {
+    console.log('Evento de clic recibido:', e);
+
+    const lng = e.lngLat.lng;
+    const lat = e.lngLat.lat;
+    const zoomActual = map.getZoom();
+
+    console.log('Coordenadas del clic:', lat, lng);
+    console.log('Zoom actual:', zoomActual);
+
+    const margenGrados = calcularMargenGrados(zoomActual);
+    console.log('Margen de grados calculado:', margenGrados);
+
+    // Comprobar si ciudades existe y es un objeto
+    if (typeof ciudades !== 'object' || ciudades === null) {
+        console.error('Error: ciudades no está definido o no es un objeto');
+        return;
+    }
+
+    // Comprobar si el clic está cerca de alguna ciudad
+    const cercaDeCiudad = Object.values(ciudades).some(ciudad => {
+        if (!ciudad || !Array.isArray(ciudad.center) || ciudad.center.length < 2) {
+            console.warn('Ciudad inválida encontrada:', ciudad);
+            return false;
+        }
+
+        const ciudadLng = ciudad.center[0];
+        const ciudadLat = ciudad.center[1];
+        
+        // Ajustar el margen de longitud basado en la latitud
+        const margenLngAjustado = margenGrados / Math.cos(ciudadLat * Math.PI / 180);
+
+        const dentroDeMargenLat = Math.abs(lat - ciudadLat) < margenGrados;
+        const dentroDeMargenLng = Math.abs(lng - ciudadLng) < margenLngAjustado;
+
+        return dentroDeMargenLat && dentroDeMargenLng;
+    });
+
+    if (!cercaDeCiudad) {
+        // Eliminar el marcador anterior si existe
+        if (clickMarker) {
+            clickMarker.remove();
+        }
+
+        // Crear el contenido del popup con estilos mejorados y el botón Salir centrado
+        const popupContent = `
+            <h3>Ver pasos en esta ubicación</h3>
+            <div style="margin-top:-1.5em">
+                <button onclick="predecirPasosISS(${lat}, ${lng})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Mostrar pasos</button>
+                <div style="text-align:center;">
+                    <button onclick="window.cerrarPopupYEliminarMarcador()" class="uk-button uk-button-secondary">Salir</button>
+                </div>
+            </div>
+        `;
+
+        // Crear el marcador con el popup
+        clickMarker = new mapboxgl.Marker()
+            .setLngLat([lng, lat])
+            .setPopup(new mapboxgl.Popup({ offset: 25, closeButton: false })
+                .setHTML(popupContent))
+            .addTo(map);
+
+        // Abrir el popup automáticamente
+        clickMarker.togglePopup();
+    } else {
+        console.log('Clic cerca de una ciudad, no se realiza acción');
+    }
+}
+
+// Hacer la función accesible globalmente
+window.cerrarPopupYEliminarMarcador = function() {
+    if (clickMarker) {
+        // Cerrar el popup
+        const popup = clickMarker.getPopup();
+        if (popup.isOpen()) {
+            popup.remove();
+        }
+        
+        // Eliminar el marcador
+        clickMarker.remove();
+        clickMarker = null;
+    }
+};
+
+// Asegúrate de que el mapa esté cargado antes de añadir el evento de clic
+map.on('load', function() {
+    console.log('Mapa cargado, añadiendo evento de clic');
+    map.on('click', onMapClick);
+});
+
+      
+
+            
+
+            function marcador_simple() {
+                var marker = new mapboxgl.Marker()
+                    .setLngLat([-3.70379, 40.41678]) // Coordenadas del marcador
+                    .addTo(map)
+                    .setPopup(new mapboxgl.Popup().setHTML('<h3>Coordenadas</h3><p>Latitud: ' + 40.41678 + '<br>Longitud: ' + (-3.70379) + '</p>'));
+
+                marker.getPopup().on('open', function () {
+                    var lngLat = marker.getLngLat();
+                    marker.getPopup().setHTML('<h3>Coordenadas</h3><p>Latitud: ' + lngLat.lat + '<br>Longitud: ' + lngLat.lng + '</p>');
+                });
+
+                marker.getElement().addEventListener('click', function () {
+                    marker.togglePopup();
+                });
+
+                console.log('Map and marker added successfully');
+            }
+        }
+
+
+
+
+        // Asegúrate de que esta función se llame cuando el mapa esté cargado
+        function initializeISSRoute() {
+            map.addSource('iss-route', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': []
+                    }
+                }
+            });
+
+            map.addLayer({
+                'id': 'iss-route',
+                'type': 'line',
+                'source': 'iss-route',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': '#00ff00',
+                    'line-width': 2,
+                    'line-opacity': 0.8
+                }
+            });
+        }
+
+
+
+
+
+
+        function actualizarUbicacion() {
+            const now = Date.now();
+            if (now - lastUpdateTime < UPDATE_INTERVAL) return;
+            lastUpdateTime = now;
+
+            fetch('/actualizar_ubicacion')
+                .then(response => response.json())
+                .then(data => {
+
+                    let newCoord = [data.longitud, data.latitud];
+
+                    if (issMarker) {
+                        issMarker.setLngLat(newCoord);
+                    } else {
+                        crearMarcadorISS(newCoord);
+                    }
+
+                    actualizarTrayectoriaISS(data.longitud, data.latitud);
+                    actualizarInfoPosicion(data);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+
+
+
+
+
+        const VELOCIDAD_MINIMA = 27530; // 0% del progress bar
+        const VELOCIDAD_MAXIMA = 27616; // 100% del progress bar
+
+        let ultimaVelocidad = 27650; // Inicializamos con un valor medio aproximado
+
+        let contadorActualizaciones = 0;
+
+        function actualizarInfoPosicion(data) {
+            document.getElementById('latitud').textContent = `Latitud: ${data.latitud.toFixed(4)}`;
+            document.getElementById('longitud').textContent = `Longitud: ${data.longitud.toFixed(4)}`;
+
+            // Actualizar el contador
+            contadorActualizaciones++;
+            document.getElementById('contador-actualizaciones').textContent = `Actualizaciones: ${contadorActualizaciones}`;
+
+            // Actualizar el valor de velocidad
+            const velocidad = parseFloat(data.velocidad);
+            const velocidadValor = document.getElementById('velocidad-valor');
+            const velocidadBarra = document.getElementById('velocidad-barra');
+
+            velocidadValor.textContent = velocidad.toFixed(2);
+
+            // Calcular el valor para el progress bar
+            const valorProgress = Math.max(0, Math.min(100,
+                ((velocidad - VELOCIDAD_MINIMA) / (VELOCIDAD_MAXIMA - VELOCIDAD_MINIMA)) * 100
+            ));
+            velocidadBarra.value = valorProgress;
+
+            // Cambiar el color del progress bar basado en el valor
+            let color;
+            if (valorProgress < 33) {
+                color = '#00ff00'; // Verde
+            } else if (valorProgress < 66) {
+                color = '#ffff00'; // Amarillo
+            } else {
+                color = '#ff0000'; // Rojo
+            }
+            velocidadBarra.style.setProperty('--progress-color', color);
+
+            // Actualizar el texto con el rango de velocidades
+            document.getElementById('velocidad-rango').textContent =
+                `Rango: ${VELOCIDAD_MINIMA.toFixed(0)} - ${VELOCIDAD_MAXIMA.toFixed(0)} km/h`;
+
+            // Manejar el dato de altitud
+            if (data.altitud != undefined) {
+                document.getElementById('altura').textContent = `Altura: ${data.altitud.toFixed(2)} km`;
+            } else {
+                document.getElementById('altura').textContent = 'Altura: No disponible';
+            }
+
+
+        }
+
+        function centrarMapa() {
+            if (screen.width < 1200) {
+                document.getElementById('cerrar-aside').click();
+            }
+            if (issMarker) {
+                map.easeTo({
+                    center: issMarker.getLngLat(),
+                    zoom: zoomy,
+                    duration: 1000,
+                    easing: function (t) {
+                        return t * (2 - t);
+                    }
+                });
+            }
+        }
+
+        // Usar requestAnimationFrame para animaciones suaves
+        function animarMarcador(timestamp) {
+            // Lógica de animación aquí
+            requestAnimationFrame(animarMarcador);
+        }
+        requestAnimationFrame(animarMarcador);
+
+        function adjustCoordinates(coords) {
+            let adjustedCoords = [];
+            let segments = [];
+            let segment = [];
+
+            for (let i = 0; i < coords.length; i++) {
+                let coord = coords[i];
+                if (i > 0) {
+                    let prevCoord = segment[segment.length - 1];
+                    let diff = coord[0] - prevCoord[0];
+                    if (Math.abs(diff) > 180) {
+                        // Cruce de línea de fecha detectado
+                        segments.push(segment);
+                        segment = [];
+                    }
+                }
+                segment.push(coord);
+            }
+            if (segment.length > 0) {
+                segments.push(segment);
+            }
+
+            // Devolver el último segmento completo
+            return segments[segments.length - 1] || [];
+        }
+
+        // Inicia la actualización periódica
+        setInterval(actualizarUbicacion, 1000); // Actualiza cada segundo
+
         function lista_xml() {
             document.getElementById('borrar_xml').style.display = "block"
             var ubicaciones = JSON.parse('{{ lista | tojson | safe }}');
@@ -241,7 +1077,7 @@
 
             // Crear array de coordenadas para los puntos
             var coordinates = ubicaciones.map(function (ubicacion) {
-                return [parseFloat(ubicacion[1]), parseFloat(ubicacion[0])];
+                return [parseFloat(ubicacion[0]), parseFloat(ubicacion[1])];
             }).filter(coord => !isNaN(coord[0]) && !isNaN(coord[1]));
 
             // Añadir la fuente y la capa de los puntos
@@ -268,7 +1104,7 @@
                 'source': 'iss-points',
                 'paint': {
                     'circle-radius': 3,
-                    'circle-color': '#ff0000',
+                    'circle-color': '#3FB1CE',
                     'circle-opacity': 0.8
                 }
 
@@ -281,324 +1117,565 @@
 
             map.fitBounds(bounds, {
                 padding: 50,
-                maxZoom: 15,
+                zoom: 1.5,
                 duration: 2000
             });
 
-            document.getElementById('cerrar-aside').click()
-        }
-
-        function borrar_xml() {
-
-            // Eliminar capas y fuentes existentes si las hay
-            ['iss-points'].forEach(function (layer) {
-                if (map.getLayer(layer)) map.removeLayer(layer);
-                if (map.getSource(layer)) map.removeSource(layer);
-            });
-            document.getElementById('borrar_xml').style.display = "none"
-
-            document.getElementById('cerrar-aside').click()
-        }
-
-        function inicializarMapa(latitud, longitud) {
-            mapboxgl.accessToken = 'pk.eyJ1IjoiZ2EtZWR1YXJkbyIsImEiOiJjbDVmNzQyY3kwaHJpM2pvM29lOWVuZnVlIn0.a20bgkRxwewC43RomqCQ9g';
-            map = new mapboxgl.Map({
-                container: 'map',
-                style: 'mapbox://styles/mapbox/satellite-streets-v12',
-                center: [longitud, latitud],
-                zoom: 0.8,  // Cambiado a un valor inicial más apropiado
-                projection: 'globe'
-            });
-
-            map.on('load', function () {
-                puntoInicial = [longitud, latitud];
-                puntosRuta.push(puntoInicial); // Añadir el punto inicial a la ruta
-
-                // Marcador inicial con icono predeterminado
-                marcadorInicial = new mapboxgl.Marker({
-                    color: "#3bb2d0",
-                    scale: 0.8
-                })
-                    .setLngLat(puntoInicial)
-                    .addTo(map);
-
-                // Marcador actual (personalizado)
-                var elActual = document.createElement('div');
-                elActual.className = 'marker actual';
-                marcadorActual = new mapboxgl.Marker(elActual)
-                    .setLngLat(puntoInicial)
-                    .addTo(map);
-
-                // Inicializar la fuente de datos para la ruta
-                map.addSource('rutaSource', {
-                    type: 'geojson',
-                    data: {
-                        type: 'Feature',
-                        properties: {},
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: puntosRuta
-                        }
-                    }
-                });
-
-                // Añadir la capa de la línea
-                map.addLayer({
-                    id: 'rutaLayer',
-                    type: 'line',
-                    source: 'rutaSource',
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': '#007cbf',
-                        'line-width': 3
-                    }
-                });
-
-                lineaRuta = map.getSource('rutaSource');
-
-                // Asegurarse de que los marcadores sean visibles
-                setTimeout(() => {
-                    marcadorInicial.addTo(map);
-                    marcadorActual.addTo(map);
-
-                    // Cambiar suavemente a zoom 5 después de 2 segundos
-                    setTimeout(() => {
-                        map.flyTo({
-                            center: puntoInicial,
-                            zoom: 4,
-                            duration: 3000, // duración de 3 segundos
-                            essential: true // esto asegura que la animación se realice incluso en dispositivos móviles
-                        });
-                        setTimeout(() => {
-                            zoomy = 3; // Actualizar la variable zoomy después de la animación
-                            actualizarSlider(); // Actualizar el slider
-                        }, 5000);
-                    }, 2000);
-                }, 1000);
-
-                // Añadir evento para actualizar el slider cuando el zoom cambia
-                map.on('zoomend', function() {
-                    if (!actualizandoZoom) {
-                        zoomy = Math.round(map.getZoom() * 10) / 10; // Redondear a 1 decimal
-                        actualizarSlider();
-                    }
-                });
-            });
-        }
-
-        function actualizarUbicacion() {
-            fetch('/actualizar_ubicacion')
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.latitud && data.longitud) {
-                        var nuevoPunto = [data.longitud, data.latitud];
-                        
-                        document.getElementById('latitud').innerText = "Lat.: " + data.latitud.toFixed(4);
-                        document.getElementById('longitud').innerText = "Long: " + data.longitud.toFixed(4);
-
-                        // Actualizar marcador actual
-                        marcadorActual.setLngLat(nuevoPunto);
-
-                        // Añadir el nuevo punto a la ruta
-                        puntosRuta.push(nuevoPunto);
-
-                        // Actualizar línea de ruta
-                        lineaRuta.setData({
-                            type: 'Feature',
-                            properties: {},
-                            geometry: {
-                                type: 'LineString',
-                                coordinates: puntosRuta
-                            }
-                        });
-
-                        console.log('Ubicación actualizada:', nuevoPunto);
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        function calcularCaminoCorto(inicio, fin) {
-            var d = 180 / Math.PI;
-            var camino = [];
-            var n = 100; // número de puntos intermedios
-
-            for (var i = 0; i <= n; i++) {
-                var f = i / n;
-                var A = Math.sin((1 - f) * d) / Math.sin(d);
-                var B = Math.sin(f * d) / Math.sin(d);
-                var x = A * Math.cos(inicio[1] / d) * Math.cos(inicio[0] / d) + B * Math.cos(fin[1] / d) * Math.cos(fin[0] / d);
-                var y = A * Math.cos(inicio[1] / d) * Math.sin(inicio[0] / d) + B * Math.cos(fin[1] / d) * Math.sin(fin[0] / d);
-                var z = A * Math.sin(inicio[1] / d) + B * Math.sin(fin[1] / d);
-                var lat = Math.atan2(z, Math.sqrt(x * x + y * y)) * d;
-                var lon = Math.atan2(y, x) * d;
-                camino.push([lon, lat]);
-            }
-
-            return camino;
-        }
-
-        function centrarMapa() {
-            if (map && marcadorActual) {
-                var currentPosition = marcadorActual.getLngLat();
-                if (/Mobi|Android/i.test(navigator.userAgent)) {
-                    map.easeTo({
-                        center: [currentPosition.lng, currentPosition.lat],
-                        zoom: zoomy,
-                        duration: 2000,
-                        essential: true
-                    });
-                } else {
-                    map.flyTo({
-                        center: [currentPosition.lng, currentPosition.lat],
-                        zoom: zoomy,
-                        duration: 1000
-                    });
-                }
-            }
             if (screen.width < 1200) {
                 document.getElementById('cerrar-aside').click();
             }
-            borrar_xml();
+        }
+
+        let intentosRestantes = 3; // Número de intentos permitidos
+        let botonBloqueado = false; // Estado del botón
+
+        function borrar_xml() {
+            if (botonBloqueado) {
+                console.log('Procesando solicitud. Por favor, espere...');
+                return;
+            }
+
+            botonBloqueado = true;
+            document.getElementById('borrar_xml').disabled = true; // Deshabilita visualmente el botón
+
+            function intentarBorrar() {
+                try {
+                    if (!map || !map.loaded()) {
+                        throw new Error('El mapa no está cargado o definido');
+                    }
+
+                    // Código para borrar XML y detener animaciones
+                    // ... (tu lógica actual para borrar XML y detener animaciones) ...
+
+                    console.log('XML borrado y animaciones detenidas con éxito');
+                    intentosRestantes = 3; // Reinicia el contador de intentos
+                    botonBloqueado = false;
+                    document.getElementById('borrar_xml').disabled = false; // Habilita el botón
+                } catch (error) {
+                    console.error('Error al borrar XML o detener animaciones:', error.message);
+                    intentosRestantes--;
+
+                    if (intentosRestantes > 0) {
+                        console.log(`Reintentando en 300ms. Intentos restantes: ${intentosRestantes}`);
+                        setTimeout(intentarBorrar, 300);
+                    } else {
+                        console.error('No se pudo completar la operación después de varios intentos');
+                        intentosRestantes = 3; // Reinicia el contador de intentos
+                        botonBloqueado = false;
+                        document.getElementById('borrar_xml').disabled = false; // Habilita el botón
+                    }
+                }
+            }
+
+            intentarBorrar();
         }
 
         function go_zoom() {
-            if (map && !actualizandoZoom) {
-                actualizandoZoom = true;
+            if (map) {
                 map.easeTo({
                     zoom: zoomy,
-                    duration: 1000
+                    duration: 500,
                 });
-                setTimeout(() => { actualizandoZoom = false; }, 1100);
+                actualizarSlider(zoomy);
             }
         }
 
-        function inicializarSlider() {
+        $(function () {
             var handle = $("#custom-handle");
-            sliderHandle = $("#sliderHandle").slider({
+            $("#sliderHandle").slider({
                 range: 'min',
                 min: 0,
-                max: 22,
+                max: 23,
                 value: zoomy,
                 step: 0.1,
                 create: function () {
-                    handle.text($(this).slider("value").toFixed(1));
+                    handle.text(zoomy.toFixed(1));
                 },
                 slide: function (event, ui) {
-                    if (!actualizandoSlider) {
-                        zoomy = ui.value;
-                        handle.text(zoomy.toFixed(1));
-                        actualizandoSlider = true;
-                        map.setZoom(zoomy);
-                        setTimeout(() => { actualizandoSlider = false; }, 100);
+                    zoomy = ui.value;
+                    handle.text(zoomy.toFixed(1));
+                    if (map) {
+                        map.easeTo({
+                            zoom: zoomy,
+                            duration: 500,
+                        });
                     }
                 }
             });
+            actualizarSlider(zoomy);
+        });
 
-            if (/Mobi|Android/i.test(navigator.userAgent)) {
-                $("#sliderHandle").css({
-                    'height': '40px',
-                    'touch-action': 'none'
-                });
-                $(".ui-slider-handle").css({
-                    'width': '50px',
-                    'height': '50px',
-                    'top': '-10px',
-                    'margin-left': '-25px'
-                });
+        function fadeInMap() {
+            console.log('Iniciando fade in del mapa');
+            document.getElementById('map').style.opacity = '1';
+            document.getElementById('map-overlay').style.opacity = '0';
+
+            setTimeout(function () {
+                console.log('Removiendo overlay');
+                document.getElementById('map-overlay').style.display = 'none';
+                mostrarMensajeParpadeante();
+            }, 2000);
+        }
+
+        function mostrarMensajeParpadeante() {
+            const mensaje = document.getElementById('mensaje-parpadeante');
+            mensaje.style.display = 'block';
+            mensaje.style.opacity = '0';
+
+            // Animación de entrada
+            let opacidad = 0;
+            const fadeIn = setInterval(() => {
+                if (opacidad < 1) {
+                    opacidad += 0.1;
+                    mensaje.style.opacity = opacidad;
+                } else {
+                    clearInterval(fadeIn);
+                    setTimeout(() => {
+                        ocultarMensaje();
+                    }, 5000);
+
+                }
+            }, 50);
+
+
+
+            function ocultarMensaje() {
+                const fadeOut = setInterval(() => {
+                    if (opacidad > 0) {
+                        opacidad -= 0.1;
+                        mensaje.style.opacity = opacidad;
+                    } else {
+                        clearInterval(fadeOut);
+                        mensaje.style.display = 'none';
+                    }
+                }, 50);
             }
         }
 
-        function limpiar_caja() {
-            document.getElementById('caja-buscar').value = "";
-            document.getElementById('caja-buscar').focus();
-            
-            // Ocultar la iteración de datos-ciudad
-            var ciudadDiv = document.getElementById('ciudad');
-            if (ciudadDiv) {
-                ciudadDiv.style.display = 'none';
-            }
-        }
-
-        function actualizarSlider() {
-            if (sliderHandle && !actualizandoSlider) {
-                actualizandoSlider = true;
-                sliderHandle.slider("value", zoomy);
-                $("#custom-handle").text(zoomy.toFixed(1));
-                setTimeout(() => { actualizandoSlider = false; }, 100);
-            }
-        }
-
-        // Inicializar el mapa y la ruta
         document.addEventListener('DOMContentLoaded', function () {
-            fetch('/actualizar_ubicacion')
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.latitud && data.longitud) {
-                        inicializarMapa(data.latitud, data.longitud);
-                        setInterval(actualizarUbicacion, 1000); // Actualizar cada 5 segundos
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-            
+            console.log('DOM cargado, inicializando mapa...');
+            inicializarMapa();
+
         });
 
-        // Asegúrate de que esta función se llame cuando el documento esté listo
-        $(document).ready(function() {
-            inicializarSlider();
-        });
 
-        map.on('zoom', function() {
-            zoomy = Math.round(map.getZoom() * 10) / 10;  // Redondear a 1 decimal
-            actualizarSlider();
-        });
 
-        document.getElementById('zoom-slider').addEventListener('input', function() {
-            zoomy = parseFloat(this.value);
-            map.zoomTo(zoomy, { duration: 0 });
-        });
 
-        // Asegúrate de que esta función se llame cuando el mapa esté listo
-        map.on('load', function() {
-            inicializarSlider();
-            
-            map.on('zoomend', function() {
-                if (!actualizandoSlider) {
-                    zoomy = Math.round(map.getZoom() * 10) / 10;
-                    actualizarSlider();
+        function actualizarSlider(zoom) {
+            $("#sliderHandle").slider("value", zoom);
+            $("#custom-handle").text(zoom.toFixed(1));
+            zoomy = zoom; // Actualiza la variable global zoomy
+        }
+        let lista = JSON.parse('{{ lista | tojson | safe }}');
+
+        function demo() {
+            console.log("Iniciando demo");
+            // Ocultar la capa de tiempo real
+            if (map.getLayer('linea-iss')) {
+                map.setLayoutProperty('linea-iss', 'visibility', 'none');
+            }
+            if (issMarker) {
+                issMarker.remove();
+            }
+
+
+
+            if (!map.loaded()) {
+                console.log("Mapa no cargado, esperando evento 'load'");
+                map.on('load', demo);
+                return;
+            }
+
+            console.log("Mapa cargado, continuando con demo");
+
+            // Borrar todas las capas relacionadas con demo
+            map.getStyle().layers.forEach(function (layer) {
+                if (layer.id.startsWith('iss-demo-')) {
+                    map.removeLayer(layer.id);
                 }
             });
-        });
 
-        // Elimina o comenta esta línea si existe, ya que ahora manejamos el zoom en el evento 'zoomend'
-        // map.on('zoom', function() { ... });
 
-        function afterRequestHandler(element) {
-            element.blur();
-            mostrarCiudad();
-        }
 
-        function mostrarCiudad() {
-            var ciudadDiv = document.getElementById('ciudad');
-            if (ciudadDiv) {
-                ciudadDiv.style.display = 'block';
+            var coordinates = '{{ lista | tojson | safe }}';
+            console.log("Número de coordenadas:", coordinates.length);
+
+            coordinates = JSON.parse(coordinates);
+
+            // Filtrar coordenadas válidas
+            coordinates = coordinates.filter(coord => Array.isArray(coord) && coord.length >= 2 && !isNaN(coord[0]) && !isNaN(coord[1]));
+
+            if (coordinates.length === 0) {
+                console.error("No hay coordenadas válidas para mostrar");
+                return;
+            }
+
+            // Interpolación geodésica de puntos
+            var interpolatedCoordinates = []
+            var interpolationSteps = 10
+
+            for (var i = 0; i < coordinates.length - 1; i++) {
+                var start = coordinates[i]
+                var end = coordinates[i + 1]
+                interpolatedCoordinates.push(start)
+
+                var line = turf.lineString([start, end])
+                var length = turf.length(line)
+                var step = length / interpolationSteps
+
+                for (var j = 1; j < interpolationSteps; j++) {
+                    var interpolated = turf.along(line, step * j)
+                    interpolatedCoordinates.push(interpolated.geometry.coordinates)
+                }
+            }
+            interpolatedCoordinates.push(coordinates[coordinates.length - 1])
+
+            coordinates = interpolatedCoordinates
+            console.log("Número de coordenadas interpoladas:", coordinates.length);
+
+            // Añadir source y layer para los puntos
+            map.addSource('iss-demo-points', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'FeatureCollection',
+                    'features': coordinates.map(coord => ({
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': coord
+                        }
+                    }))
+                }
+            });
+
+            map.addLayer({
+                'id': 'iss-demo-points',
+                'type': 'circle',
+                'source': 'iss-demo-points',
+                'paint': {
+                    'circle-radius': 2,  // tamaño del punto
+                    'circle-color': '#3FB1CE',
+                    'circle-opacity': 0.8
+                }
+            });
+
+            // Ajustar la vista del mapa suavemente
+            var bounds = coordinates.reduce(function (bounds, coord) {
+                return bounds.extend(coord);
+            }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+            map.fitBounds(bounds, {
+                padding: 50,
+                duration: 1000, // duración de la animación en milisegundos
+                maxZoom: 3 // limitar el zoom máximo
+            });
+
+            if (screen.width < 1200) {
+                document.getElementById('cerrar-aside').click();
             }
         }
 
-        function limpiar_caja() {
-            document.getElementById('caja-buscar').value = "";
-            document.getElementById('caja-buscar').focus();
-            
-            // Ocultar la iteración de datos-ciudad
-            var ciudadDiv = document.getElementById('ciudad');
-            if (ciudadDiv) {
-                ciudadDiv.style.display = 'none';
+        // Declarar issMarker globalmente al principio de tu archivo JavaScript
+
+        let animationSpeed = 810; // Duplicamos el valor original de 405
+        let isAnimating = false; // Variable para controlar si la animación está en curso
+
+        function demo_estacion() {
+            console.log("Iniciando demo_estacion");
+            if (screen.width < 1200) {
+                document.getElementById('cerrar-aside').click();
+            }
+
+            if (!map || !map.loaded()) {
+                console.error("El mapa no está cargado o definido");
+                return;
+            }
+
+            console.log("Mapa cargado, continuando con demo_estacion");
+
+            // Borrar todas las capas relacionadas con demo_estacion
+            map.getStyle().layers.forEach(function (layer) {
+                if (layer.id.startsWith('iss-demo-')) {
+                    map.removeLayer(layer.id);
+                }
+            });
+
+            // Borrar todas las fuentes relacionadas con demo_estacion
+            var sources = map.getStyle().sources;
+            for (var sourceId in sources) {
+                if (sourceId.startsWith('iss-demo-')) {
+                    map.removeSource(sourceId);
+                }
+            }
+
+            // Remover todos los marcadores existentes
+            if (window.issMarkers) {
+                window.issMarkers.forEach(marker => marker.remove());
+            }
+            window.issMarkers = [];
+
+            // Limpiar cualquier animación previa
+            if (window.issAnimationFrame) {
+                cancelAnimationFrame(window.issAnimationFrame);
+            }
+
+            var coordinates = '{{ lista | tojson | safe }}';
+            console.log("Número de ubicaciones en lista:", coordinates.length);
+
+            coordinates = JSON.parse(coordinates);
+
+            coordinates = coordinates.filter(ubicacion => Array.isArray(ubicacion) && ubicacion.length >= 2)
+                .map(function (ubicacion) {
+                    return [parseFloat(ubicacion[0]), parseFloat(ubicacion[1])];
+                }).filter(coord => !isNaN(coord[0]) && !isNaN(coord[1]));
+
+            console.log("Número de coordenadas válidas:", coordinates.length);
+
+            if (coordinates.length === 0) {
+                console.error("No hay coordenadas válidas para mostrar");
+                return;
+            }
+
+            console.log("Primera coordenada:", coordinates[0]);
+            console.log("Última coordenada:", coordinates[coordinates.length - 1]);
+
+            // Interpolacin geodésica de puntos
+            var interpolatedCoordinates = []
+            var interpolationSteps = 10
+
+            for (var i = 0; i < coordinates.length - 1; i++) {
+                var start = coordinates[i]
+                var end = coordinates[i + 1]
+                interpolatedCoordinates.push(start)
+
+                var line = turf.lineString([start, end])
+                var length = turf.length(line)
+                var step = length / interpolationSteps
+
+                for (var j = 1; j < interpolationSteps; j++) {
+                    var interpolated = turf.along(line, step * j)
+                    interpolatedCoordinates.push(interpolated.geometry.coordinates)
+                }
+            }
+            interpolatedCoordinates.push(coordinates[coordinates.length - 1])
+
+            coordinates = interpolatedCoordinates
+            console.log("Número de coordenadas interpoladas:", coordinates.length);
+
+            // Ajustar la vista inicial del mapa
+            map.jumpTo({
+                center: [0, 0],
+                zoom: 1.5,
+                pitch: 0,
+                bearing: 0
+            });
+
+            console.log("Vista del mapa ajustada");
+
+            // Crear un elemento HTML para el marcador de la ISS
+            var el = document.createElement('div');
+            el.className = 'iss-marker';
+            el.style.backgroundImage = 'url(/static/images/iss.png)';
+            el.style.width = '40px';
+            el.style.height = '40px';
+            el.style.backgroundSize = 'contain';
+
+            // Crear el marcador
+            var marker = new mapboxgl.Marker(el)
+                .setLngLat(coordinates[0])
+                .addTo(map);
+
+            window.issMarkers = [marker];
+
+            console.log("Marcador de la ISS añadido al mapa");
+
+            // Añadir fuente y capa para los puntos de la trayectoria
+            map.addSource('iss-demo-points', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'FeatureCollection',
+                    'features': []
+                }
+            });
+
+            map.addLayer({
+                'id': 'iss-demo-points',
+                'type': 'circle',
+                'source': 'iss-demo-points',
+                'paint': {
+                    'circle-radius': 3,
+                    'circle-color': '#3FB1CE',
+                    'circle-opacity': 0.8
+                }
+            });
+
+            var currentIndex = 0;
+            var lastTimestamp = 0;
+            var animationSpeed = 50; // ms entre cada frame
+            var rotationSpeed = 0.1; // grados por frame
+
+            function animateEarthAndISS(timestamp) {
+                if (timestamp - lastTimestamp >= animationSpeed) {
+                    // Rotar la Tierra
+                    var currentCenter = map.getCenter();
+                    map.setCenter([currentCenter.lng - rotationSpeed, currentCenter.lat]);
+
+                    if (currentIndex < coordinates.length) {
+                        var currentCoord = coordinates[currentIndex];
+                        console.log("Moviendo ISS a:", currentCoord);
+
+                        // Mover el marcador a la nueva posición
+                        marker.setLngLat(currentCoord);
+
+                        var source = map.getSource('iss-demo-points');
+                        var features = source._data.features;
+                        features.push({
+                            'type': 'Feature',
+                            'geometry': {
+                                'type': 'Point',
+                                'coordinates': currentCoord
+                            }
+                        });
+                        source.setData({
+                            'type': 'FeatureCollection',
+                            'features': features
+                        });
+
+                        currentIndex++;
+                    } else {
+                        // Si hemos llegado al final de la lista, reiniciamos
+                        currentIndex = 0;
+                    }
+
+                    lastTimestamp = timestamp;
+                }
+
+                window.issAnimationFrame = requestAnimationFrame(animateEarthAndISS);
+            }
+
+            console.log("Iniciando animación");
+            window.issAnimationFrame = requestAnimationFrame(animateEarthAndISS);
+        }
+
+
+        function actualizarTrayectoriaISS(lng, lat) {
+            let nuevoPunto = [lng, lat];
+
+            if (puntos.length === 0) {
+                puntos.push(posicionInicial);
+            }
+
+            if (puntos.length > 0) {
+                let ultimoPunto = puntos[puntos.length - 1];
+
+                // Detectar si cruzamos el meridiano 180°
+                if (Math.abs(nuevoPunto[0] - ultimoPunto[0]) > 180) {
+                    // Ajustar la longitud del nuevo punto para una transición suave
+                    if (nuevoPunto[0] > ultimoPunto[0]) {
+                        nuevoPunto[0] -= 360;
+                    } else {
+                        nuevoPunto[0] += 360;
+                    }
+                }
+            }
+
+            puntos.push(nuevoPunto);
+
+            // Mantener un máximo de puntos para la trayectoria
+            if (puntos.length > 100) {
+                puntos = puntos.slice(-100);
+            }
+
+            // Normalizar las longitudes para evitar saltos en la visualización
+            let puntosNormalizados = puntos.map(p => {
+                return [((p[0] + 540) % 360) - 180, p[1]];
+            });
+
+            // Actualizar la fuente de datos
+            var source = map.getSource('trayectoria-iss');
+            if (source) {
+                source.setData({
+                    'type': 'Feature',
+                    'properties': {},
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': puntosNormalizados
+                    }
+                });
+            } else {
+                console.error('Fuente de datos trayectoria-iss no encontrada');
+            }
+
+            // Dibujar una línea desde la posición inicial hasta la posición actual
+            var sourceDirecta = map.getSource('linea-directa-iss');
+            if (sourceDirecta) {
+                sourceDirecta.setData({
+                    'type': 'Feature',
+                    'properties': {},
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': [posicionInicial, nuevoPunto]
+                    }
+                });
+            } else {
+                map.addSource('linea-directa-iss', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'properties': {},
+                        'geometry': {
+                            'type': 'LineString',
+                            'coordinates': [posicionInicial, nuevoPunto]
+                        }
+                    }
+                });
+                map.addLayer({
+                    'id': 'linea-directa-iss',
+                    'type': 'line',
+                    'source': 'linea-directa-iss',
+                    'layout': {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    'paint': {
+                        'line-color': '#3FB1CE',
+                        'line-width': 2
+                    }
+                });
             }
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    </script>
+    <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+    <script src="{{url_for('static',filename='js/contador.js')}}"></script>
+    <script src="{{url_for('static',filename='js/script.js')}}"></script>
+    <script src="https://unpkg.com/draggabilly@2/dist/draggabilly.pkgd.min.js"></script>
+
+    <script type="application/ld+json">
+
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Mapa en Tiempo Real de la ISS",
+      "description": "Seguimiento en vivo de la Estación Espacial Internacional",
+      "url": "https://iss-edu.vercel.app/",
+      "applicationCategory": "Mapa",
+      "operatingSystem": "Web"
+    }
     </script>
 </body>
 

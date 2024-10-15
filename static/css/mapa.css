@@ -1,7 +1,6 @@
  body {
      margin: 0;
      padding: 0;
-     background-image: url('https://cdn.pixabay.com/photo/2016/11/21/12/30/milky-way-1845068_1280.jpg');
      background-size: cover;
      background-repeat: no-repeat;
      background-position: center;
@@ -17,22 +16,123 @@
 
  }
 
+
  #map {
      position: absolute;
      top: 0;
      bottom: 0;
      width: 100%;
      height: 100%;
+     opacity: 0;
+     transition: opacity 1s ease-in-out;
  }
 
+#map-overlay {
+    opacity: 1;
+    transition: opacity 1s ease-in-out;
+}
+
+
  .marker {
-     background-image: url('/static/images/iss.png');
-     background-size: cover;
-     width: 40px;
-     height: 40px;
-     border-radius: 50%;
-     cursor: pointer;
- }
+    background-image: url('/static/images/iss.png');
+    background-size: cover;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+  
+}
+
+#panel-astronauta {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    width: calc(100% - 20px);
+    max-width: 400px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border: 1px solid #444;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: none;
+    color: rgb(0, 0, 0);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+#panel-astronauta .panel-header {
+    padding: 10px;
+    cursor: move;
+    background-color: #222;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+#panel-astronauta .panel-header h3 {
+    margin: 0;
+    font-size: 1.2em;
+    color:whitesmoke
+}
+
+#panel-astronauta .cerrar-panel {
+    background-color: #cc0000;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+#panel-astronauta .panel-content {
+    padding: 15px;
+}
+
+#panel-astronauta img {
+    display: block;
+    margin: 0 auto 15px;
+    max-width: 100%;
+    height: auto;
+    border: 2px solid #444;
+}
+
+#panel-astronauta p {
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+#panel-astronauta strong {
+    color: #ffd700;
+}
+
+@media (max-width: 600px) {
+    #panel-astronauta {
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: none;
+        height: 100vh;
+        max-height: none;
+    }
+
+    #panel-astronauta .panel-header {
+        font-size: 0.9em;
+    }
+
+    #panel-astronauta .panel-content {
+        padding: 10px;
+    }
+
+    #panel-astronauta img {
+        max-width: 80%;
+    }
+}
 
  .mapboxgl-ctrl-logo {
      display: none !important;
@@ -53,6 +153,42 @@
  .mapboxgl-ctrl-attrib-button {
      display: none !important;
  }
+ .mapboxgl-marker {
+    z-index: 2;
+  }
+  
+  .mapboxgl-popup {
+    z-index: 3;
+  }
+
+ progress {
+    width: 100%;
+    height: 30px; /* Aumentado para mayor visibilidad */
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 15px; /* Bordes más redondeados */
+    overflow: hidden; /* Para el efecto de brillo */
+    box-shadow: 0 0 10px rgba(0,0,0,0.5); /* Sombra para profundidad */
+}
+
+progress::-webkit-progress-bar {
+    background-color: #333; /* Fondo más oscuro para contraste */
+    border-radius: 15px;
+}
+
+progress::-webkit-progress-value {
+    border-radius: 15px;
+    background-color: var(--progress-color, #4CAF50);
+    transition: all 0.3s ease; /* Transición suave para cambios de color */
+    box-shadow: 0 0 10px var(--progress-color); /* Efecto de brillo */
+}
+
+progress::-moz-progress-bar {
+    border-radius: 15px;
+    background-color: var(--progress-color, #4CAF50);
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px var(--progress-color);
+}
 
  .ciudades {
     z-index: 1;
@@ -65,8 +201,53 @@
      background-color: rgb(46, 126, 146) !important;
  }
 
+ .video-responsive {
+	height: 0;
+	overflow: hidden;
+	padding-bottom: 56.25%;
+	padding-top: 30px;
+	position: relative;
+	}
+.video-responsive iframe, .video-responsive object, .video-responsive embed {
+	height: 100%;
+	left: 0;
+	position: absolute;
+	top: 0;
+	width: 100%;
+	}
+
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+    }
+    
+    .loading-spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: translate(-50%, -50%) rotate(0deg); }
+        100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
  @media (max-width: 1200px) {
      .uk-offcanvas-bar {
          width: 300px !important;
      }
  }
+

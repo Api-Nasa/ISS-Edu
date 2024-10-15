@@ -1,43 +1,129 @@
-from flask import Flask, render_template, request, jsonify,redirect,url_for
+import json
+from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask_cors import CORS
+import time
 import requests
 import xmltodict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pymap3d import ecef2geodetic
+from typing import List, Dict
+import traceback
+import os
 
 app = Flask(__name__, static_folder='static', template_folder='templates', static_url_path='/static')
-ub = [0, 0]
+CORS(app)
+ub = [0, 0]  # Mantenemos el array original con longitud y latitud
+velocidad_iss = 0
+altitud_iss = 0
+
+astronautas_cache = None
 
 def obtener_ubicacion_iss():
-    global ub
+    global ub, velocidad_iss, altitud_iss
     try:
         respuesta = requests.get("https://api.wheretheiss.at/v1/satellites/25544")
         datos = respuesta.json()
         
         if respuesta.status_code == 200:
-            latitud = float(datos['latitude'])
-            longitud = float(datos['longitude'])
-            ub = [latitud, longitud]
-            return [latitud, longitud]
+            ub = [float(datos['longitude']), float(datos['latitude'])]
+            velocidad_iss = float(datos['velocity'])
+            altitud_iss = float(datos['altitude'])
+            return ub, velocidad_iss, altitud_iss
         else:
-            return ub
+            return ub, velocidad_iss, altitud_iss
     except requests.RequestException:
-        return ub
+        return ub, velocidad_iss, altitud_iss
 
 @app.route('/actualizar_ubicacion')
 def actualizar_ubicacion():
+    print("Llamada a actualizar_ubicacion")
     try:
-        ubicacion = obtener_ubicacion_iss()
+        ubicacion, velocidad, altitud = obtener_ubicacion_iss()
         return {
-            'latitud': ubicacion[0],
-            'longitud': ubicacion[1]
+            'longitud': ubicacion[0],
+            'latitud': ubicacion[1],
+            'velocidad': velocidad,
+            'altitud': altitud
         }
     except Exception as e:
         print(f"Error en actualizar_ubicacion: {str(e)}")
         return jsonify({
-            'latitud': ub[0],
-            'longitud': ub[1],
+            'longitud': ub[0],
+            'latitud': ub[1],
+            'velocidad': velocidad_iss,
+            'altitud': altitud_iss,
             'error': 'Se produjo un error al actualizar la ubicación'
         })
+
+def obtener_pasos_iss(latitud, longitud, dias=10):
+    api_key = "J9JWLD-V6A5DE-9G6Y54-5CR5"
+    url = f"https://api.n2yo.com/rest/v1/satellite/visualpasses/25544/{latitud}/{longitud}/0/{dias}/300/&apiKey={api_key}"
+    
+    try:
+        respuesta = requests.get(url, timeout=10)
+        respuesta.raise_for_status()
+        datos = respuesta.json()
+        
+        print("URL de la solicitud (sin clave API):", url.rsplit('&apiKey=', 1)[0])
+        print("Respuesta completa de la API:", json.dumps(datos, indent=2))
+        
+        if 'error' in datos:
+            raise Exception(f"Error de la API N2YO: {datos['error']}")
+        
+        if 'passes' not in datos:
+            print("No se encontraron pasos en la respuesta de la API")
+            return []
+        
+        pasos = datos['passes']
+        print(f"Número de pasos encontrados: {len(pasos)}")
+        
+        pasos_formateados = []
+        for paso in pasos:
+            try:
+                inicio = datetime.utcfromtimestamp(paso['startUTC'])
+                fin = datetime.utcfromtimestamp(paso['endUTC'])
+                pasos_formateados.append({
+                    "inicio": inicio.strftime("%Y-%m-%d %H:%M:%S"),
+                    "fin": fin.strftime("%Y-%m-%d %H:%M:%S"),
+                    "duracion": str(timedelta(seconds=paso['duration'])),
+                    "elevacion_maxima": paso['maxEl']
+                })
+            except KeyError as e:
+                print(f"Error al procesar un paso: {e}. Datos del paso: {paso}")
+        
+        print(f"Pasos formateados: {json.dumps(pasos_formateados, indent=2)}")
+        return pasos_formateados
+    except requests.RequestException as e:
+        raise Exception(f"Error al obtener datos de pasos de la ISS: {str(e)}")
+    except KeyError as e:
+        raise Exception(f"Error al procesar la respuesta de la API: Clave no encontrada: {str(e)}")
+    except Exception as e:
+        raise Exception(f"Error inesperado: {str(e)}")
+
+@app.route('/predecir_pasos', methods=['POST'])
+def predecir_pasos():
+    try:
+        print("Datos recibidos:", request.json)
+        datos = request.json
+        latitud = datos.get('latitud')
+        longitud = datos.get('longitud')
+        
+        if not latitud or not longitud:
+            return jsonify({"error": "Se requieren latitud y longitud"}), 400
+        
+        pasos = obtener_pasos_iss(latitud, longitud)
+        
+        print(f"Número de pasos obtenidos: {len(pasos)}")
+        print(f"Pasos a enviar al cliente: {json.dumps(pasos, indent=2)}")
+        
+        if not pasos:
+            return jsonify({"mensaje": "No hay pasos visibles de la ISS para esta ubicación en los próximos días.", "pasos": []}), 200
+        
+        return jsonify({"mensaje": "Pasos de la ISS encontrados", "pasos": pasos}), 200
+    except Exception as e:
+        error_details = traceback.format_exc()
+        app.logger.error(f"Error en predecir_pasos: {str(e)}\n{error_details}")
+        return jsonify({"error": "Error interno del servidor", "details": str(e)}), 500
 
 def obtener_y_procesar_datos_xml():
     url_archivo = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
@@ -60,7 +146,7 @@ def obtener_y_procesar_datos_xml():
             
             fecha, hora = extraer_fecha_hora(epoch)
             lat, lon = cartesian_to_geodetic(x, y, z)
-            lista.append([lat, lon])
+            lista.append([lon, lat])
             latitudes.append(lat)
             longitudes.append(lon)
         
@@ -69,21 +155,18 @@ def obtener_y_procesar_datos_xml():
         print(f"Error al obtener o procesar el archivo XML: {str(e)}")
         return [], [], []
 
-@app.after_request
-def add_header(response):
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '-1'
-    return response
-
 @app.route('/mapa')
 def mostrar_mapa():
-    ubicacion = obtener_ubicacion_iss()
+    print("Accediendo a la ruta /mapa")
+    ubicacion, velocidad, altitud = obtener_ubicacion_iss()
     lista, latitudes, longitudes = obtener_y_procesar_datos_xml()
-    return render_template('mapa.html', ubicacion=ubicacion, lista=lista)
+    astronautas = obtener_todos_detalles_astronautas()
+    print("Datos de astronautas:", astronautas)  
+    return render_template('mapa.html', ubicacion=ubicacion, velocidad=velocidad, altitud=altitud, lista=lista, astronautas=astronautas)
 
 @app.route('/')
 def inicio():
+    print("Accediendo a la ruta raíz")
     return render_template("index.html")
 
 @app.route('/obtener_coordenadas_ciudad', methods=['GET'])
@@ -110,10 +193,8 @@ def obtener_coordenadas_ciudad():
         print(f"Error en la búsqueda de coordenadas: {str(e)}")
         lugares.append([f"Error en la búsqueda: {str(e)}", "", ""])
         return render_template('/componentes/datos-ciudad.html', ciudades=lugares)
-pais=""
-from flask import jsonify, render_template, request
-import requests
 
+pais=""
 @app.route('/ciudades', methods=['GET'])
 def ciudades():
     global pais
@@ -181,6 +262,89 @@ def pasos():
   global pais
   ciudad = request.args.get('lista-ciudades')
   return render_template('/componentes/pasos.html',pais=pais,ciudad=ciudad)
+
+def obtener_todos_detalles_astronautas():
+    global astronautas_cache
+    
+    if astronautas_cache is not None:
+        return astronautas_cache
+
+    try:
+        url_iss = "http://api.open-notify.org/astros.json"
+        respuesta_iss = requests.get(url_iss)
+        datos_iss = respuesta_iss.json()
+        
+        astronautas_detallados = []
+        
+        for astronauta in datos_iss['people']:
+            if astronauta['craft'] == 'ISS':
+                detalles = obtener_detalles_astronauta_real(astronauta['name'])
+                astronautas_detallados.append(detalles)
+        
+        astronautas_cache = astronautas_detallados
+        return astronautas_detallados
+    except Exception as e:
+        print(f"Error al obtener datos de astronautas: {e}")
+        return []
+
+@app.route('/api/todos_astronautas')
+def api_todos_astronautas():
+    astronautas = obtener_todos_detalles_astronautas()
+    return jsonify(astronautas)
+
+def obtener_detalles_astronauta_real(nombre):
+    nasa_api_key = "LcOsUb9QsY53AdyV9gpTyoQAoilOpz0zKwpR3Jph"
+    url_nasa = f"https://images-api.nasa.gov/search?q={nombre}&media_type=image"
+    respuesta_nasa = requests.get(url_nasa)
+    datos_nasa = respuesta_nasa.json()
+    
+    imagen_url = "https://via.placeholder.com/200x200.png?text=No+Image"
+    descripcion = "No hay información adicional disponible."
+    nacionalidad = "Desconocida"
+    agencia = "ISS"
+    fecha_nacimiento = "Desconocida"
+    
+    if 'items' in datos_nasa['collection'] and datos_nasa['collection']['items']:
+        for item in datos_nasa['collection']['items']:
+            if 'data' in item and item['data']:
+                data = item['data'][0]
+                if nombre.lower() in data.get('title', '').lower():
+                    descripcion = data.get('description', descripcion)
+                    nacionalidad = data.get('location', nacionalidad)
+                    fecha_nacimiento = data.get('date_created', fecha_nacimiento)
+                    if 'links' in item:
+                        for link in item['links']:
+                            if link.get('rel') == 'preview' and link.get('render') == 'image':
+                                imagen_url = link['href']
+                                imagen_url = imagen_url.replace('~thumb', '~medium')
+                                break
+                    break
+    
+    if nacionalidad == "Desconocida":
+        if "NASA" in agencia:
+            nacionalidad = "Estados Unidos"
+        elif "Roscosmos" in agencia:
+            nacionalidad = "Rusia"
+        elif "JAXA" in agencia:
+            nacionalidad = "Japón"
+        elif "ESA" in agencia:
+            nacionalidad = "Europa"
+        elif "CSA" in agencia:
+            nacionalidad = "Canadá"
+    
+    tiempo_espacio = (datetime.now() - datetime(2021, 4, 1)).days
+
+    return {
+        "nombre": nombre,
+        "nave": "ISS",
+        "foto_url": imagen_url,
+        "descripcion": descripcion,
+        "nacionalidad": nacionalidad,
+        "agencia": agencia,
+        "fecha_nacimiento": fecha_nacimiento,
+        "tiempo_espacio": f"{tiempo_espacio} días",
+        "mision_actual": "Expedición actual en la ISS"
+    }
 
 if __name__ == '__main__':
     app.run()

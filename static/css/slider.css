@@ -3,6 +3,7 @@
     height: 90px;
   position: relative;
   margin-top:10px;
+  margin-bottom: 2em;
 }
 
 #slider {
@@ -73,6 +74,7 @@
 .ui-slider-horizontal .ui-slider-handle {
     margin-left: -0.8em;
 }
+
 
 #eq{
   height:150px;
