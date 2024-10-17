@@ -1,15 +1,35 @@
-var astronautasGlobales = [];
 
-document.addEventListener('DOMContentLoaded', function() {
+
+// Función para precargar imágenes
+function precargarImagenesAstronautas(astronautas) {
+    astronautas.forEach(astronauta => {
+        if (astronauta.foto_url) {
+            const img = new Image();
+            img.src = astronauta.foto_url;
+        }
+        if (astronauta.galeria_fotos && Array.isArray(astronauta.galeria_fotos)) {
+            astronauta.galeria_fotos.forEach(url => {
+                const img = new Image();
+                img.src = url;
+            });
+        }
+    });
+}
+
+
+
+document.addEventListener('DOMContentLoaded', function () {
     console.log('Mapa.js cargado');
-   
+     
+    
     try {
         var astronautasData = document.getElementById('my-data').getAttribute('data-name');
         astronautasGlobales = JSON.parse(astronautasData);
         console.log("Datos de astronautas parseados:", astronautasGlobales);
-        
+
         if (Array.isArray(astronautasGlobales) && astronautasGlobales.length > 0) {
             actualizarListaAstronautas(astronautasGlobales);
+            precargarImagenesAstronautas(astronautasGlobales);
         } else {
             console.warn("Los datos de astronautas no son un array válido o están vacíos");
         }
@@ -31,10 +51,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     inicializarPanelAstronautas();
 
-    document.getElementById('opciones').style.opacity="1";
+    document.getElementById('opciones').style.opacity = "1";
     var accordion = document.querySelector('ul[uk-accordion]');
-    
-    UIkit.util.on(accordion, 'shown', function(e) {
+
+    UIkit.util.on(accordion, 'shown', function (e) {
         if (e.target.contains(document.getElementById('caja-buscar'))) {
             document.getElementById('caja-buscar').focus();
         }
@@ -72,15 +92,15 @@ function actualizarListaAstronautas(astronautas) {
 
     listaAstronautas.innerHTML = '';
 
-    astronautas.forEach(function(astronauta) {
+    astronautas.forEach(function (astronauta) {
         var li = document.createElement('li');
         var enlace = document.createElement('a');
         enlace.href = '#';
         enlace.className = 'astronauta-link';
         enlace.setAttribute('data-nombre', astronauta.nombre);
         enlace.textContent = astronauta.nombre;
-        
-        enlace.onclick = function(e) {
+
+        enlace.onclick = function (e) {
             e.preventDefault();
             mostrarDetallesAstronauta(astronauta.nombre);
         };
@@ -96,16 +116,16 @@ function actualizarListaAstronautas(astronautas) {
 function inicializarPanelAstronautas() {
     const panel = document.getElementById('panel-astronautas');
     const cerrarBoton = panel.querySelector('.cerrar-panel');
-    
+
     makeDraggable(panel);
-    
+
     panel.style.display = 'none';
-   
-    window.mostrarPanelAstronautas = function() {
+
+    window.mostrarPanelAstronautas = function () {
         panel.style.display = 'block';
-       
+
     };
-    
+
     if (cerrarBoton) {
         cerrarBoton.addEventListener('click', cerrarPanelAstronautas);
     }
@@ -151,13 +171,13 @@ function makeDraggable(element) {
 }
 
 function manejarClicOpciones() {
-   const panelAstronautas = document.getElementById('panel-astronautas');
-   const panelAstronauta = document.getElementById('panel-astronauta');
-   if (panelAstronautas && panelAstronautas.style.display !== 'none') {
-       panelAstronautas.style.display = 'none';
-       panelAstronauta.style.display = 'none';
+    const panelAstronautas = document.getElementById('panel-astronautas');
+    const panelAstronauta = document.getElementById('panel-astronauta');
+    if (panelAstronautas && panelAstronautas.style.display !== 'none') {
+        panelAstronautas.style.display = 'none';
+        panelAstronauta.style.display = 'none';
     }
-   toggleOpcionesMenu();
+    toggleOpcionesMenu();
 }
 
 document.getElementById('opciones').addEventListener('click', manejarClicOpciones);
@@ -177,17 +197,17 @@ function predecirPasosISS(lat, lng, popupToClose) {
             longitud: lng
         }),
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            throw new Error(data.error + (data.details ? ': ' + data.details : ''));
-        }
-        mostrarPrediccionesPasos(data, lat, lng);
-    })
-    .catch(error => {
-        console.error('Error completo:', error);
-        alert('Hubo un error al predecir los pasos de la ISS: ' + error.message);
-    });
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error + (data.details ? ': ' + data.details : ''));
+            }
+            mostrarPrediccionesPasos(data, lat, lng);
+        })
+        .catch(error => {
+            console.error('Error completo:', error);
+            alert('Hubo un error al predecir los pasos de la ISS: ' + error.message);
+        });
 }
 
 function mostrarPrediccionesPasos(data, lat, lng) {
@@ -243,7 +263,7 @@ function mostrarPrediccionesPasos(data, lat, lng) {
     if (data.pasos && data.pasos.length > 0) {
         console.log("Número de pasos a mostrar:", data.pasos.length);
         contenido += `<h4 style="color: #0066cc;">Pasos previstos:</h4>`;
-        
+
         const ahora = new Date();
         let hayPasoHoy = false;
 
@@ -252,9 +272,9 @@ function mostrarPrediccionesPasos(data, lat, lng) {
             const inicioFecha = new Date(paso.inicio);
             const esHoy = inicioFecha > ahora && inicioFecha.toDateString() === ahora.toDateString();
             let fecha = new Date(paso.inicio);
-    
+
             let meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-            
+
             let fechaFormateada = `${fecha.getDate()} de ${meses[fecha.getMonth()]}`;
             if (esHoy && !hayPasoHoy) {
                 contenido += `<h5 style="color: #ffcc00; background-color: #333; padding: 5px;">¡Hoy lo puedes ver!</h5>`;
@@ -262,7 +282,7 @@ function mostrarPrediccionesPasos(data, lat, lng) {
             }
 
             const estilo = esHoy ? 'background-color: #333; color: #ffcc00; padding: 10px; border-radius: 5px;' : '';
-            
+
             contenido += `
                 <div style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 10px; ${estilo}">
                     <strong style="color: ${esHoy ? '#ffcc00' : '#0066cc'};">Paso ${index + 1}: ${fechaFormateada}</strong><br>
@@ -289,7 +309,7 @@ function mostrarPrediccionesPasos(data, lat, lng) {
 
     closeButton.addEventListener('click', cerrarDiv);
 
-    window.addEventListener('click', function(event) {
+    window.addEventListener('click', function (event) {
         if (event.target == contenidoDiv) {
             cerrarDiv();
         }
@@ -299,9 +319,10 @@ function mostrarPrediccionesPasos(data, lat, lng) {
 function cerrarPanelAstronautas() {
     const panelAstronautas = document.getElementById('panel-astronautas');
     if (panelAstronautas) {
-        panelAstronautas.style.display = 'none';}
-        
-    
+        panelAstronautas.style.display = 'none';
+    }
+
+
     // Cerrar también el panel-astronauta
     cerrarPanelAstronauta();
 }
@@ -313,21 +334,21 @@ function cerrarPanelAstronauta() {
     }
 }
 
-function astronautas(popupToClose){
+function astronautas(popupToClose) {
     if (popupToClose) {
-        setTimeout(function(){
-            popupToClose.remove();  
+        setTimeout(function () {
+            popupToClose.remove();
         }, 100);
     }
     mostrarPanelAstronautas();
 }
 
-function ver_solo_estacion(){
+function ver_solo_estacion() {
     if (screen.width < 1200) {
         document.getElementById('cerrar-aside').click();
     }
     borrar_xml();
-    centrarMapa();  
+    centrarMapa();
 }
 
 function limpiar_caja() {
@@ -336,17 +357,17 @@ function limpiar_caja() {
     document.getElementById('ciudad').innerHTML = '';
 }
 
-function pasar_src(source){
+function pasar_src(source) {
     document.getElementById('myvideo').setAttribute('src', source);
-    document.getElementById('titulo-video').innerHTML=document.getElementById(source).innerHTML;
+    document.getElementById('titulo-video').innerHTML = document.getElementById(source).innerHTML;
 }
 
-function quitar_source(){
+function quitar_source() {
     document.getElementById('myvideo').setAttribute('src', "");
     document.getElementById('myinfo').setAttribute('src', "");
 }
 
-UIkit.util.on('#modal-example', 'hidden', function() {
+UIkit.util.on('#modal-example', 'hidden', function () {
     document.getElementById('myvideo').setAttribute('src', "");
     document.getElementById('opciones').click();
 });
@@ -406,36 +427,75 @@ function borrar_xml() {
 }
 
 function mostrarDetallesAstronauta(nombre) {
+    cerrarPanelAstronautas()
     var astronauta = astronautasGlobales.find(a => a.nombre === nombre);
-    
+
     if (astronauta) {
         var panelAstronauta = document.getElementById('panel-astronauta');
-        
+
         if (!panelAstronauta) {
             console.error('No se encontró el panel de astronauta');
             return;
         }
-        
+
         var contenidoHTML = `
-            <div class="panel-header">
-                <h3>${astronauta.nombre || 'Nombre no disponible'}</h3>
-                <button class="cerrar-panel">&times;</button>
-            </div>
-            <div class="panel-content">
-                <img src="${astronauta.foto_url || '#'}" alt="${astronauta.nombre || 'Astronauta'}">
-                <p>${astronauta.descripcion || 'Descripción no disponible'}</p>
-                <p><strong>Nacionalidad:</strong> ${astronauta.nacionalidad || 'No disponible'}</p>
-                <p><strong>Agencia:</strong> ${astronauta.agencia || 'No disponible'}</p>
-                <p><strong>Tiempo en el espacio:</strong> ${astronauta.tiempo_espacio || 'No disponible'}</p>
-                <p><strong>Misión actual:</strong> ${astronauta.mision_actual || 'No disponible'}</p>
+            <div class="uk-container uk-container-xsmall uk-margin-auto">
+                <div class="panel-header uk-flex uk-flex-between uk-flex-middle">
+                    <h3 class="uk-margin-remove">${astronauta.nombre || 'Nombre no disponible'}</h3>
+                    <button class="cerrar-panel uk-close-large" uk-close></button>
+                </div>
+                <div class="uk-position-relative uk-margin-small-top">
+                    <button class="uk-button uk-button-primary uk-position-top-right">Ver Galería</button>
+                </div>
+                <div class="uk-grid-small uk-grid-match" uk-grid>
+                    <div class="uk-width-1-1 uk-width-1-3@m">
+                        <div class="uk-card uk-card-default uk-card-body">
+                            <img class="uk-width-1-1" src="${astronauta.foto_url || '#'}" alt="${astronauta.nombre || 'Astronauta'}">
+                        </div>
+                    </div>
+                    <div class="uk-width-1-1 uk-width-2-3@m">
+                        <div class="uk-card uk-card-default uk-card-body">
+                            <h4 class="uk-card-title">Descripción</h4>
+                            <p>${astronauta.descripcion || 'Descripción no disponible'}</p>
+                                    <div class="uk-margin-bottom">
+                                         <button class="uk-button uk-button-primary uk-width-1-1" onclick="abrirGaleriaAstronauta('${astronauta.nombre}')">Ver Galería de Fotos</button>
+                                    </div>
+                                     <div class="uk-margin-bottom">
+                                <button class="uk-button uk-button-secondary uk-width-1-1" onclick="abrirGaleriaEquipoCompleto()">Ver Fotos de Todo el Equipo</button>
+                            </div>
+                            </div>
+                    </div>
+                </div>
+                <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m uk-margin-small-top" uk-grid>
+                    <div>
+                        <div class="uk-card uk-card-default uk-card-body">
+                            <p class="uk-margin-remove"><strong>Nacionalidad:</strong> ${astronauta.nacionalidad || 'No disponible'}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="uk-card uk-card-default uk-card-body">
+                            <p class="uk-margin-remove"><strong>Agencia:</strong> ${astronauta.agencia || 'No disponible'}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="uk-card uk-card-default uk-card-body">
+                            <p class="uk-margin-remove"><strong>Tiempo en el espacio:</strong> ${astronauta.tiempo_espacio || 'No disponible'}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="uk-card uk-card-default uk-card-body">
+                            <p class="uk-margin-remove"><strong>Misión actual:</strong> ${astronauta.mision_actual || 'No disponible'}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
-        
+
         panelAstronauta.innerHTML = contenidoHTML;
         panelAstronauta.style.display = 'block';
-        
+
         // Hacer el panel dragable
-        makeDraggable(panelAstronauta);
+        //makeDraggable(panelAstronauta);
 
         // Añadir evento de cierre al botón
         var cerrarBoton = panelAstronauta.querySelector('.cerrar-panel');
@@ -455,5 +515,228 @@ function mostrarPanelAstronautas() {
     if (panelAstronautas) {
         panelAstronautas.style.display = 'block';
         panelAstronautas.scrollTop = 0;
+        panelAstronautas.height = "fit-content"
     }
+}
+
+
+// Función para mostrar el panel de un astronauta
+function mostrarPanelAstronauta(astronauta) {
+    const panelContainer = document.getElementById('panel-container');
+    panelContainer.innerHTML = crearPanelAstronauta(astronauta);
+
+    // Aquí puedes agregar la lógica para hacer el panel arrastrable si es necesario
+    // Por ejemplo, usando una biblioteca como Draggabilly
+    const element = document.getElementById('panel-astronautas');
+    new Draggabilly(element, {
+        handle: '.panel-header'
+    });
+}
+
+// Función para abrir la galería de fotos del astronauta
+function abrirGaleriaAstronauta(nombre) {
+    // Primero, cerrar la ficha del astronauta actual
+    cerrarFichaAstronauta();
+    cerrarPanelAstronautas()
+
+    console.log("Abriendo galería para:", nombre);
+    var astronauta = astronautasGlobales.find(a => a.nombre === nombre);
+    
+    // Crear los badges para los otros astronautas
+    const otrosAstronautas = astronautasGlobales
+        .filter(a => a.nombre !== nombre)
+        .map(a => `<span class="uk-badge uk-margin-small-right uk-margin-small-bottom" style="cursor: pointer;" data-astronauta="${a.nombre}">${a.nombre}</span>`)
+        .join('');
+
+    // Crear el contenido del modal
+    var modalContent = `
+        <div style="z-index:7000" class="uk-modal-dialog uk-modal-body uk-modal-large" style="width: 90vw; max-width: 1200px; background-color: white;">
+            <button class="uk-modal-close-default" type="button" uk-close></button>
+            <h2 class="uk-modal-title" style="color: #333;">Galería de ${nombre}</h2>
+            <div class="uk-margin-medium-bottom">
+                <h4>Otros astronautas:</h4>
+                <div id="otros-astronautas-container">
+                    ${otrosAstronautas}
+                </div>
+            </div>
+            <div id="galeria-container" class="uk-grid uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-4@m uk-child-width-1-5@l uk-grid-small" uk-grid>
+                <!-- Las imágenes se cargarán aquí -->
+            </div>
+        </div>
+    `;
+
+    // Crear y mostrar el modal
+    var modalContainer = document.createElement('div');
+    modalContainer.id = 'galeria-modal';
+    modalContainer.innerHTML = modalContent;
+    modalContainer.style.width="90%"
+    document.body.appendChild(modalContainer);
+
+    var modal = UIkit.modal('#galeria-modal', {
+        bgClose: true,
+        escClose: true
+    });
+    
+    modal.show();
+
+    // Agregar event listeners a los badges
+    const badgesContainer = document.getElementById('otros-astronautas-container');
+    badgesContainer.addEventListener('click', function(event) {
+        if (event.target.hasAttribute('data-astronauta')) {
+            const nombreAstronautaSeleccionado = event.target.getAttribute('data-astronauta');
+            modal.hide();
+            setTimeout(() => {
+                mostrarDetallesAstronauta(nombreAstronautaSeleccionado);
+            }, 300);
+        }
+    });
+
+    UIkit.util.on('#galeria-modal', 'hidden', function() {
+        document.body.removeChild(modalContainer);
+    });
+
+    // Cargar las imágenes o mostrar mensaje si no hay fotos
+    if (astronauta && astronauta.galeria_fotos && astronauta.galeria_fotos.length > 0) {
+        cargarImagenes(astronauta.galeria_fotos, nombre);
+    } else {
+        mostrarMensajeNoFotos(nombre);
+    }
+}
+
+function cerrarFichaAstronauta() {
+    const panelAstronauta = document.getElementById('panel-astronauta');
+    if (panelAstronauta) {
+        panelAstronauta.innerHTML = '';
+        panelAstronauta.style.display = 'none';
+    }
+}
+
+function cargarImagenes(urls, nombreAstronauta) {
+    const galeriaContainer = document.getElementById('galeria-container');
+    galeriaContainer.innerHTML = ''; // Limpiar el contenedor antes de añadir nuevas imágenes
+
+    urls.forEach(url => {
+        const divImagen = document.createElement('div');
+        divImagen.innerHTML = `
+            <div class="uk-card uk-card-default">
+                <div class="uk-card-media-top">
+                    <img src="${url}" alt="Imagen de ${nombreAstronauta}" loading="lazy" style="width: 100%; height: auto;">
+                </div>
+            </div>
+        `;
+        galeriaContainer.appendChild(divImagen);
+    });
+
+    // Actualizar el layout del grid de UIkit
+    UIkit.update(galeriaContainer);
+}
+
+function mostrarMensajeNoFotos(nombreAstronauta) {
+    const galeriaContainer = document.getElementById('galeria-container');
+    if (galeriaContainer) {
+        galeriaContainer.innerHTML = `
+            <div class="uk-width-1-1 uk-flex uk-flex-column uk-flex-middle uk-flex-center" style="height: 50vh; background-color: #f8f8f8;">
+                <p class="uk-text-large uk-text-center" style="color: #333; font-weight: bold;">No hemos encontrado fotos de este astronauta</p>
+                <button class="uk-button uk-button-primary uk-margin-large-top" onclick="abrirGaleriaEquipoCompleto()">Ver Fotos de Todo el Equipo</button>
+            </div>
+        `;
+    }
+}
+
+function abrirGaleriaEquipoCompleto() {
+    console.log("Abriendo galería del equipo completo");
+    cerrarPanelAstronautas()
+    // Crear los badges para todos los astronautas
+    const todosLosAstronautas = astronautasGlobales
+        .map(a => `<span class="uk-badge uk-margin-small-right uk-margin-small-bottom" style="cursor: pointer;" data-astronauta="${a.nombre}">${a.nombre}</span>`)
+        .join('');
+
+    // Crear el contenido del modal
+    var modalContent = `
+        <div style="z-index:7000" class="uk-modal-dialog uk-modal-body uk-modal-large" style="width: 90vw; max-width: 1200px; background-color: white;">
+            <button class="uk-modal-close-default" type="button" uk-close></button>
+            <h2 class="uk-modal-title" style="color: #333;">Galería del Equipo ISS Completo</h2>
+            <div class="uk-margin-medium-bottom">
+                <h4>Astronautas:</h4>
+                <div id="todos-astronautas-container">
+                    ${todosLosAstronautas}
+                </div>
+            </div>
+            <div id="galeria-equipo-completo-container" class="uk-grid uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-4@m uk-child-width-1-5@l uk-grid-small" uk-grid>
+                <!-- Las imágenes se cargarán aquí -->
+            </div>
+        </div>
+    `;
+
+    // Crear y mostrar el modal
+    var modalContainer = document.createElement('div');
+    modalContainer.id = 'galeria-equipo-completo-modal';
+    modalContainer.innerHTML = modalContent;
+    modalContainer.style.width="90%"
+    document.body.appendChild(modalContainer);
+   
+    var modal = UIkit.modal('#galeria-equipo-completo-modal', {
+        bgClose: true,
+        escClose: true
+    });
+    
+    modal.show();
+
+    // Agregar event listeners a los badges
+    const badgesContainer = document.getElementById('todos-astronautas-container');
+    badgesContainer.addEventListener('click', function(event) {
+        if (event.target.hasAttribute('data-astronauta')) {
+            const nombreAstronautaSeleccionado = event.target.getAttribute('data-astronauta');
+            modal.hide();
+            setTimeout(() => {
+                mostrarDetallesAstronauta(nombreAstronautaSeleccionado);
+            }, 300);
+        }
+    });
+
+    UIkit.util.on('#galeria-equipo-completo-modal', 'hidden', function() {
+        document.body.removeChild(modalContainer);
+    });
+
+    // Cargar todas las imágenes de todos los astronautas
+    const todasLasImagenes = astronautasGlobales.flatMap(astronauta => 
+        [astronauta.foto_url, ...(astronauta.galeria_fotos || [])]
+    ).filter(url => url && url.trim() !== '');
+
+    cargarImagenesEquipoCompleto(todasLasImagenes);
+}
+
+function cargarImagenesEquipoCompleto(urls) {
+    const galeriaContainer = document.getElementById('galeria-equipo-completo-container');
+    galeriaContainer.innerHTML = ''; // Limpiar el contenedor antes de añadir nuevas imágenes
+    cerrarPanelAstronautas()
+    urls.forEach((url, index) => {
+        const divImagen = document.createElement('div');
+        divImagen.innerHTML = `
+            <div style="z-index:4500" class="uk-card uk-card-default">
+                <div class="uk-card-media-top">
+                    <img src="${url}" alt="Imagen ${index + 1}" loading="lazy" style="width: 100%; height: auto;">
+                </div>
+            </div>
+        `;
+        galeriaContainer.appendChild(divImagen);
+    });
+
+    // Actualizar el layout del grid de UIkit
+    UIkit.update(galeriaContainer);
+}
+
+function precargarImagenesAstronautas(astronautas) {
+    astronautas.forEach(astronauta => {
+        if (astronauta.foto_url) {
+            const img = new Image();
+            img.src = astronauta.foto_url;
+        }
+        if (astronauta.galeria_fotos && Array.isArray(astronauta.galeria_fotos)) {
+            astronauta.galeria_fotos.forEach(url => {
+                const img = new Image();
+                img.src = url;
+            });
+        }
+    });
 }

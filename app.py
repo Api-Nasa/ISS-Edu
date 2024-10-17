@@ -200,7 +200,7 @@ def ciudades():
     global pais
     pais = request.args.get('country')
     if not pais:
-        return jsonify({"error": "No se proporcionó un país"}), 400
+        return jsonify({"error": "No se proporcion un país"}), 400
 
     poblacion_minima = 200000  # Ajusta este valor según tus necesidades
 
@@ -274,12 +274,19 @@ def obtener_todos_detalles_astronautas():
         respuesta_iss = requests.get(url_iss)
         datos_iss = respuesta_iss.json()
         
+        astronautas_iss = [astronauta['name'] for astronauta in datos_iss['people'] if astronauta['craft'] == 'ISS']
+        
         astronautas_detallados = []
         
-        for astronauta in datos_iss['people']:
-            if astronauta['craft'] == 'ISS':
-                detalles = obtener_detalles_astronauta_real(astronauta['name'])
-                astronautas_detallados.append(detalles)
+        for astronauta in astronautas_iss:
+            # Hacer una llamada individual para cada astronauta
+            nasa_api_key = "LcOsUb9QsY53AdyV9gpTyoQAoilOpz0zKwpR3Jph"
+            url_nasa = f"https://images-api.nasa.gov/search?q={astronauta}&media_type=image"
+            respuesta_nasa = requests.get(url_nasa)
+            datos_nasa = respuesta_nasa.json()
+            
+            detalles = obtener_detalles_astronauta_optimizado(astronauta, datos_nasa)
+            astronautas_detallados.append(detalles)
         
         astronautas_cache = astronautas_detallados
         return astronautas_detallados
@@ -287,50 +294,34 @@ def obtener_todos_detalles_astronautas():
         print(f"Error al obtener datos de astronautas: {e}")
         return []
 
-@app.route('/api/todos_astronautas')
-def api_todos_astronautas():
-    astronautas = obtener_todos_detalles_astronautas()
-    return jsonify(astronautas)
-
-def obtener_detalles_astronauta_real(nombre):
-    nasa_api_key = "LcOsUb9QsY53AdyV9gpTyoQAoilOpz0zKwpR3Jph"
-    url_nasa = f"https://images-api.nasa.gov/search?q={nombre}&media_type=image"
-    respuesta_nasa = requests.get(url_nasa)
-    datos_nasa = respuesta_nasa.json()
-    
+def obtener_detalles_astronauta_optimizado(nombre, datos_nasa):
     imagen_url = "https://via.placeholder.com/200x200.png?text=No+Image"
     descripcion = "No hay información adicional disponible."
     nacionalidad = "Desconocida"
     agencia = "ISS"
     fecha_nacimiento = "Desconocida"
+    galeria_fotos = []
     
-    if 'items' in datos_nasa['collection'] and datos_nasa['collection']['items']:
+    if 'items' in datos_nasa['collection']:
         for item in datos_nasa['collection']['items']:
             if 'data' in item and item['data']:
                 data = item['data'][0]
                 if nombre.lower() in data.get('title', '').lower():
                     descripcion = data.get('description', descripcion)
-                    nacionalidad = data.get('location', nacionalidad)
+                    if 'location' in data:
+                        nacionalidad = data['location']
+                    elif 'center' in data:
+                        agencia = data['center']
+                        nacionalidad = obtener_nacionalidad_por_agencia(agencia)
                     fecha_nacimiento = data.get('date_created', fecha_nacimiento)
                     if 'links' in item:
                         for link in item['links']:
                             if link.get('rel') == 'preview' and link.get('render') == 'image':
-                                imagen_url = link['href']
-                                imagen_url = imagen_url.replace('~thumb', '~medium')
-                                break
-                    break
-    
-    if nacionalidad == "Desconocida":
-        if "NASA" in agencia:
-            nacionalidad = "Estados Unidos"
-        elif "Roscosmos" in agencia:
-            nacionalidad = "Rusia"
-        elif "JAXA" in agencia:
-            nacionalidad = "Japón"
-        elif "ESA" in agencia:
-            nacionalidad = "Europa"
-        elif "CSA" in agencia:
-            nacionalidad = "Canadá"
+                                foto_url = link['href'].replace('~thumb', '~medium')
+                                if imagen_url == "https://via.placeholder.com/200x200.png?text=No+Image":
+                                    imagen_url = foto_url
+                                else:
+                                    galeria_fotos.append(foto_url)
     
     tiempo_espacio = (datetime.now() - datetime(2021, 4, 1)).days
 
@@ -338,6 +329,7 @@ def obtener_detalles_astronauta_real(nombre):
         "nombre": nombre,
         "nave": "ISS",
         "foto_url": imagen_url,
+        "galeria_fotos": galeria_fotos,  # Ahora no incluye la foto principal
         "descripcion": descripcion,
         "nacionalidad": nacionalidad,
         "agencia": agencia,
@@ -346,5 +338,24 @@ def obtener_detalles_astronauta_real(nombre):
         "mision_actual": "Expedición actual en la ISS"
     }
 
+def obtener_nacionalidad_por_agencia(agencia):
+    if "NASA" in agencia:
+        return "Estados Unidos"
+    elif "Roscosmos" in agencia:
+        return "Rusia"
+    elif "JAXA" in agencia:
+        return "Japón"
+    elif "ESA" in agencia:
+        return "Europa"
+    elif "CSA" in agencia:
+        return "Canadá"
+    else:
+        return "Desconocida"
+
+@app.route('/api/todos_astronautas')
+def api_todos_astronautas():
+    astronautas = obtener_todos_detalles_astronautas()
+    return jsonify(astronautas)
+
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

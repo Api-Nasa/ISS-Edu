@@ -65,6 +65,8 @@
         <div class="content">
             <h1>International Space station</h1>
             <h3>Discover the IIS trajectory</h3>
+            <h4 id="texto-actualizar" style="color:#3FB1CE;display:none;margin-top: 0.5em;" >Actualizando predicciones del centro espacial Johnson de la NASA</h4>
+
             <button id="more" class="btn">Read More</button>
         </div>
     </section>
@@ -108,6 +110,7 @@
             event.preventDefault();
             this.classList.add('btn-clicked');
             document.getElementById('loadingOverlay').style.display = 'block';
+            document.getElementById('texto-actualizar').style.display="block"
             setTimeout(() => {
                 window.location.href = this.href;
             }, 300);

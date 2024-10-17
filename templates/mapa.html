@@ -42,29 +42,29 @@
         Ver opciones
     </button>
 
-    <div id="panel-astronautas" class="panel-dragable" style="display:none;top: 50%;
+    <div id="panel-astronautas" class="panel-dragable" style="display:none;top: 50%;z-index:2500;
         left: 50%;padding: 0.5em;position: absolute;
         transform: translate(-50%, -50%);width:300px; max-width: 70%;">
         <div class="panel-header">
             <h3>Astronautas en la ISS</h3>
 
             <button class="cerrar-panel">&times;</button>
-        </div>
-
+            </div>
+            
         <ul id="lista-astro" class="lista-astronautas">
             {% for astronauta in astronautas %}
             <li>
                 <a href="#" class="astronauta-link" data-nombre="{{ astronauta.name }}">{{ astronauta.name }}</a>
             </li>
             {% endfor %}
-        </ul>
+                </ul>
         <div id="detalles-astronauta" style="display:none;"></div>
     </div>
 
-    <div id="panel-astronauta" class="panel-dragable"
-        style="display:none; position: absolute; top: 50px; left: 50px; width: 300px; background-color: white; border: 1px solid #ccc; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000;">
+    <div id="panel-astronauta" 
+        style="display:none; width: 90%; margin: 0 auto;margin-bottom: 3em panel-astronauta solo;background-color:transparent; padding: 10px;  z-index: 6000; margin-top:3em">
         <div class="panel-header"
-            style="cursor: move; padding: 5px; background-color: #f0f0f0; border-bottom: 1px solid #ccc;">
+            style="cursor: move; padding: 5px; background-color: white">
             <span>Detalles del Astronauta</span>
             <button onclick="cerrarPanelAstronauta()" style="float: right;">&times;</button>
         </div>
@@ -477,7 +477,7 @@
             el.style.width = '40px';
             el.style.height = '40px';
             el.style.backgroundSize = 'contain';
-            el.style.zIndex = 1
+            el.style.zIndex = 2000
             el.style.cursor = 'pointer';
 
 
@@ -492,8 +492,8 @@
                 e.stopPropagation();
                 new mapboxgl.Popup()
                     .setLngLat(issMarker.getLngLat())
-                    .setHTML('<div><h3>Estación Espacial Internacional</h3>' +
-                        ' <button class="uk-button uk-button-primary" uk-toggle="target: #modal-integrantes" style="margin-bottom:0.5em" onclick="astronautas(this.closest(\'.mapboxgl-popup\'))">Ver integrantes</button></div>')
+                    .setHTML('<div style="z-index:4000;text-align:center"><h5 style="margin:0 auto;margin-top:2em;">Estación Espacial Internacional</h5>' +
+                        ' <button class="uk-button uk-button-primary" uk-toggle="target: #modal-integrantes" style="margin:1em" onclick="astronautas(this.closest(\'.mapboxgl-popup\'))">Ver integrantes</button></div>')
                     .addTo(map);
             };
 

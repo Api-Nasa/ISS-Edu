@@ -1,3 +1,25 @@
+.uk-container-xsmall {
+background-color: white;
+padding: 0;
+min-height: 70vh;
+}
+#galeria-modal {
+    width: 90vw; /* O el ancho que desees */
+   
+}
+
+#galeria-equipo-completo-modal .uk-modal-dialog {
+    width: 90% !important; /* Forzar el ancho al 90% */
+    max-width: 1200px !important; /* Limitar el ancho máximo */
+    z-index: 7000 !important;
+}
+
+#galeria-modal .uk-modal-dialog {
+    width: 90% !important; /* Forzar el ancho al 90% */
+    max-width: 1200px !important; /* Limitar el ancho máximo */
+    z-index: 7000 !important
+}
+
 .panel-dragable {
     position: absolute;
     z-index: 1000;
@@ -6,7 +28,10 @@
     border-radius: 5px;
     padding: 10px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    width: 300px;
+    min-width: 300px;
+    min-height:350px;
+    max-height: 80vh; /* Ajusta esto según tus necesidades */
+    overflow-y: auto;
 }
 .panel-header {
     cursor: move;
@@ -43,7 +68,23 @@
     cursor: pointer;
     font-size: 18px;
 }
+/* Ocultar la barra de desplazamiento vertical pero mantener la funcionalidad en panel-astronauta */
+#panel-astronauta {
+    scrollbar-width: none; /* Para Firefox */
+    -ms-overflow-style: none; /* Para Internet Explorer y Edge */
+    overflow-y: auto; /* Permite el desplazamiento vertical */
+    max-height: 80vh; /* Altura máxima del 80% de la altura de la ventana */
+}
 
+#panel-astronauta::-webkit-scrollbar {
+    width: 0; /* Para Chrome, Safari y Opera */
+    display: none; /* Asegura que la barra de desplazamiento esté oculta */
+}
+
+/* Mantener la barra de desplazamiento horizontal visible si es necesario */
+#panel-astronauta::-webkit-scrollbar-horizontal {
+    height: auto;
+}
 .cerrar-panel {
     background: none;
     border: none;
@@ -95,4 +136,22 @@
     color: #000;
     text-decoration: none;
     cursor: pointer;
+}
+
+@media screen and (max-width: 639px) {
+    .uk-container-xsmall {
+        width: 100%;
+        max-width: none;
+        
+    }
+}
+
+@media screen and (max-width: 639px) {
+    #panel-astronauta {
+        width: 95%;
+        max-width: none;
+        left: 2.5% !important;
+        right: 2.5% !important;
+        
+    }
 }
