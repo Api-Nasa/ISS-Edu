@@ -1,1 +1,16 @@
+#entorno
 env/
+# puede haber clave secretas
+.env
+
+
+# Ignorar archivos de compilación de Python
+__pycache__/
+*.pyc
+
+# Ignorar archivos de configuración de IDE
+.vscode/
+.idea/
+
+# Ignorar otros archivos temporales
+*.log

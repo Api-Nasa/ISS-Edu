@@ -1,4 +1,5 @@
 
+var astronautasGlobales=""
 
 // Función para precargar imágenes
 function precargarImagenesAstronautas(astronautas) {
@@ -20,22 +21,9 @@ function precargarImagenesAstronautas(astronautas) {
 
 document.addEventListener('DOMContentLoaded', function () {
     console.log('Mapa.js cargado');
-     
+    conseguir_data_desde_jinja() 
     
-    try {
-        var astronautasData = document.getElementById('my-data').getAttribute('data-name');
-        astronautasGlobales = JSON.parse(astronautasData);
-        console.log("Datos de astronautas parseados:", astronautasGlobales);
-
-        if (Array.isArray(astronautasGlobales) && astronautasGlobales.length > 0) {
-            actualizarListaAstronautas(astronautasGlobales);
-            precargarImagenesAstronautas(astronautasGlobales);
-        } else {
-            console.warn("Los datos de astronautas no son un array válido o están vacíos");
-        }
-    } catch (e) {
-        console.error('Error al parsear los datos de astronautas:', e);
-    }
+   
 
     // Inicialmente, ocultamos el panel de astronautas
     var panelAstronautas = document.getElementById('panel-astronautas');
@@ -48,6 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (botonMostrarAstronautas) {
         botonMostrarAstronautas.addEventListener('click', mostrarPanelAstronautas);
     }
+
 
     inicializarPanelAstronautas();
 
@@ -65,6 +54,24 @@ document.addEventListener('DOMContentLoaded', function () {
         cerrarBoton.addEventListener('click', cerrarPanelAstronauta);
     }
 });
+
+function conseguir_data_desde_jinja(){
+    try {
+       
+        var astronautasData = document.getElementById('my-data').getAttribute('data-name');
+        astronautasGlobales = JSON.parse(astronautasData);
+        console.log("Datos de astronautas parseados:", astronautasGlobales);
+
+        if (Array.isArray(astronautasGlobales) && astronautasGlobales.length > 0) {
+            actualizarListaAstronautas(astronautasGlobales);
+            precargarImagenesAstronautas(astronautasGlobales);
+        } else {
+            console.warn("Los datos de astronautas no son un array válido o están vacíos");
+        }
+    } catch (e) {
+        console.error('Error al parsear los datos de astronautas:', e);
+    }
+}
 
 function scrollPanelToTop() {
     const panel = document.getElementById('panel-astronautas');
@@ -87,6 +94,8 @@ function actualizarListaAstronautas(astronautas) {
     var listaAstronautas = document.querySelector('.lista-astronautas');
     if (!listaAstronautas) {
         console.error('No se encontró la lista de astronautas');
+        alert("tenemos una demora. Se intentará de nuevo")
+        conseguir_data_desde_jinja()
         return;
     }
 
@@ -110,6 +119,7 @@ function actualizarListaAstronautas(astronautas) {
     });
 
     console.log("Número de astronautas en la lista:", listaAstronautas.children.length);
+   
 }
 
 
@@ -739,4 +749,19 @@ function precargarImagenesAstronautas(astronautas) {
             });
         }
     });
+}
+
+function mostrarNotificacion(mensaje) {
+    const notification = document.getElementById('notification');
+    notification.textContent = mensaje; // Establece el mensaje
+    notification.classList.add('show'); // Agrega la clase para mostrar la notificación
+    notification.style.display = 'block'; // Asegúrate de que esté visible
+
+    // Oculta la notificación después de 3 segundos
+    setTimeout(() => {
+        notification.classList.remove('show'); // Elimina la clase para ocultar
+        setTimeout(() => {
+            notification.style.display = 'none'; // Oculta el elemento
+        }, 500); // Espera a que termine la transición
+    }, 3000); // Tiempo que se mostrará la notificación
 }

@@ -32,14 +32,22 @@
 </head>
 
 <body>
+    <div class="notification-container">
+        <div id="notification" class="notification" style="display: none;">Notificación centrada</div>
+    </div>
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner"></div>
     </div>
-
+   
     <!-- This is a button toggling the off-canvas  BOTON QUE EXPANDE DESPLEGABLE OPCIONES-->
     <button id="opciones" uk-toggle="target: #my-id" type="button" style="position: fixed;border-radius: 0.5em;
     top:3em;left: 3em; font-size: 1.5em;padding: 0.5em;cursor: pointer;opacity: 0;z-index: 1;">
         Ver opciones
+    </button>
+
+    <button id="borrar" onclick="borrarTodosLosMarcadores()" uk-toggle="target: #my-id" type="button" style="position: fixed;border-radius: 0.5em;
+    top:13em;left: 3em; font-size: 1.5em;padding: 0.5em;cursor: pointer;z-index: 1;">
+        Borrar marcadores
     </button>
 
     <div id="panel-astronautas" class="panel-dragable" style="display:none;top: 50%;z-index:2500;
@@ -49,22 +57,21 @@
             <h3>Astronautas en la ISS</h3>
 
             <button class="cerrar-panel">&times;</button>
-            </div>
-            
+        </div>
+
         <ul id="lista-astro" class="lista-astronautas">
             {% for astronauta in astronautas %}
             <li>
                 <a href="#" class="astronauta-link" data-nombre="{{ astronauta.name }}">{{ astronauta.name }}</a>
             </li>
             {% endfor %}
-                </ul>
+        </ul>
         <div id="detalles-astronauta" style="display:none;"></div>
     </div>
 
-    <div id="panel-astronauta" 
+    <div id="panel-astronauta"
         style="display:none; width: 90%; margin: 0 auto;margin-bottom: 3em panel-astronauta solo;background-color:transparent; padding: 10px;  z-index: 6000; margin-top:3em">
-        <div class="panel-header"
-            style="cursor: move; padding: 5px; background-color: white">
+        <div class="panel-header" style="cursor: move; padding: 5px; background-color: white">
             <span>Detalles del Astronauta</span>
             <button onclick="cerrarPanelAstronauta()" style="float: right;">&times;</button>
         </div>
@@ -196,6 +203,8 @@
                     <div id="Torre_Eiffel" class="uk-badge ciudades" onclick="moverMapa(this.id)"
                         style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Torre Eiffel</div>
                     <div id="Toledo" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Toledo</div>
+                    <div id="Catedral de Ciudad Real" class="uk-badge ciudades" onclick="moverMapa(this.id)"
                         style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Toledo</div>
                     <div id="Acropolis_Atenas" class="uk-badge ciudades" onclick="moverMapa(this.id)"
                         style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Acrópolis de Atenas
@@ -372,7 +381,6 @@
                             style="min-width: 200px;" uk-toggle="target: #modal-example">
                             ISS Timelapse - Bedtime in North America (16 September 2022)</button>
 
-
                     </div>
 
                     <!-- This is the modal of video-->
@@ -427,7 +435,7 @@
 
     </div>
 
-
+  
 
 
     <div id="map-overlay"
@@ -441,6 +449,7 @@
 
     </div>
 
+   
 
 
     <script defer src="{{url_for('static',filename='js/ciudades.js')}}" defer></script>
@@ -463,6 +472,9 @@
         let lastUpdateTime = 0;
         let posicionInicial;
         let marcadores = [];
+        let marcadores_favoritos = []
+        let tamaño_marcador = 1; // Tamaño inicial del marcador
+        let lastZoom = 0; // Almacena el último zoom
         const UPDATE_INTERVAL = 3000; // 3 segundos
         const demoMapStyle = 'mapbox://styles/mapbox/light-v10'; // O cualquier otro estilo que prefieras
 
@@ -594,6 +606,7 @@
                 map.on('zoom', function () {
                     zoomy = map.getZoom();
                     actualizarSlider(zoomy);
+                    actualizar_tamaño_favoritos(zoomy);
                 });
 
 
@@ -647,9 +660,9 @@
                 console.log('El mapa aún no está cargado');
                 map.on('load', function () {
                     console.log('Mapa cargado');
-                    
+
                 });
-        }
+            }
 
 
 
@@ -659,7 +672,7 @@
             window.irAlSitio = function (lon, lat, zoom, popupToClose) {
                 if (popupToClose) {
                     popupToClose.remove();
-        }
+                }
 
                 zoomAnterior = map.getZoom(); // Guardamos el zoom actual antes de cambiar
 
@@ -696,6 +709,7 @@
                         },
                     });
                 }, 50);
+                actualizar_tamaño_favoritos(zoomAnterior)
             };
 
             // Inicializar el mapa
@@ -706,126 +720,76 @@
                 añadirMarcadoresFavoritos();
             });
 
-            function añadirMarcadoresFavoritos() {
-                console.log('Iniciando añadirMarcadoresFavoritos');
-                for (let lugar in ciudades) {
-                    let datos = ciudades[lugar];
-                    console.log(`Creando marcador para ${lugar}:`, datos);
+            añadirMarcadoresFavoritos()
 
-                    let el = document.createElement('div');
-                    el.className = 'marcador-favorito';
-                    el.style.backgroundImage = 'url(/static/images/icono_azul.png)';
-                    el.style.backgroundSize = 'contain';
-                    el.style.width = '20px';
-                    el.style.height = '20px';
-                    el.style.backgroundRepeat = 'no-repeat';
-                    el.style.backgroundPosition = 'center';
-                    el.style.cursor = 'pointer';
-                    el.style.zIndex = '1'
 
-                    let popup = new mapboxgl.Popup({ className: "popup" });
-
-                    let popupContent = `
-            <div style="display:flex; 	flex-direction: column;"> 
-            
-            <h3>${lugar}</h3>
-         
-            <div style="margin-top:-1.5em">
-            <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="irAlSitio(${datos.center[0]}, ${datos.center[1]}, ${datos.zoom}, this.closest('.mapboxgl-popup'))">Ir al sitio</button>
-            <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="informacion('${datos.informacion}', '${lugar}', this.closest('.mapboxgl-popup'))">Más información</button>
-             <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="predecirPasosISS(${datos.center[1]}, ${datos.center[0]}, this.closest('.mapboxgl-popup'))">Predecir pasos ISS</button>
-            <button class="uk-button uk-button-secondary" onclick="volverAnterior(this.closest('.mapboxgl-popup'))">Exit</button>
-            </div>
-            </div>`;
-
-                    popup.setHTML(popupContent);
-
-                    new mapboxgl.Marker(el)
-                        .setLngLat(datos.center)
-                        .setPopup(popup)
-                        .addTo(map);
-
-                    console.log(`Marcador añadido para ${lugar}`);
-                }
-                console.log('Finalizado añadirMarcadoresFavoritos');
-            }
-
-            window.informacion = function (url, lugar, popupToClose) {
-                if (popupToClose) {
-                    popupToClose.remove();
-                }
-                if (url.includes("youtube")) {
-                    document.getElementById('myvideo').setAttribute('src', url);
-                    document.getElementById('titulo-video').innerText = lugar
-                    UIkit.modal('#modal-example').show();
-                }
-                else {
-                    document.getElementById('myinfo').setAttribute('src', url);
-                    document.getElementById('titulo-iframe').innerText = lugar
-                    UIkit.modal('#modal-info').show();
-                }
-
-            }
-         
             let clickMarker; // Variable global para almacenar el marcador del clic
 
-// Definir el rango base para zoom 7
-const margenGradosBase = 0.25;
-const zoomBase = 7;
+            // Definir el rango base para zoom 7
+            const margenGradosBase = 0.25;
+            const zoomBase = 7;
 
-function calcularMargenGrados(zoomActual) {
-    // Calculamos la proporción basada en la diferencia de zoom
-    // Un zoom menor resultará en un margen mayor
-    const proporcion = Math.pow(2, zoomBase - zoomActual);
-    return margenGradosBase * proporcion;
-}
+            function calcularMargenGrados(zoomActual) {
+                // Calculamos la proporción basada en la diferencia de zoom
+                // Un zoom menor resultará en un margen mayor
+                const proporcion = Math.pow(2, zoomBase - zoomActual);
+                return margenGradosBase * proporcion;
+            }
 
-function onMapClick(e) {
-    console.log('Evento de clic recibido:', e);
+            function onMapClick(e) {
+                console.log('Evento de clic recibido:', e);
 
-    const lng = e.lngLat.lng;
-    const lat = e.lngLat.lat;
-    const zoomActual = map.getZoom();
+                const lng = e.lngLat.lng;
+                const lat = e.lngLat.lat;
+                const zoomActual = map.getZoom();
 
-    console.log('Coordenadas del clic:', lat, lng);
-    console.log('Zoom actual:', zoomActual);
+                console.log('Coordenadas del clic:', lat, lng);
+                console.log('Zoom actual:', zoomActual);
 
-    const margenGrados = calcularMargenGrados(zoomActual);
-    console.log('Margen de grados calculado:', margenGrados);
+                const margenGrados = calcularMargenGrados(zoomActual);
+                console.log('Margen de grados calculado:', margenGrados);
 
-    // Comprobar si ciudades existe y es un objeto
-    if (typeof ciudades !== 'object' || ciudades === null) {
-        console.error('Error: ciudades no está definido o no es un objeto');
-        return;
-    }
+                // Comprobar si ciudades existe y es un objeto
+                if (typeof ciudades !== 'object' || ciudades === null) {
+                    console.error('Error: ciudades no está definido o no es un objeto');
+                    return;
+                }
 
-    // Comprobar si el clic está cerca de alguna ciudad
-    const cercaDeCiudad = Object.values(ciudades).some(ciudad => {
-        if (!ciudad || !Array.isArray(ciudad.center) || ciudad.center.length < 2) {
-            console.warn('Ciudad inválida encontrada:', ciudad);
-            return false;
-        }
+                // Comprobar si el clic está cerca de alguna ciudad
+                const cercaDeCiudad = Object.values(ciudades).some(ciudad => {
+                    if (!ciudad || !Array.isArray(ciudad.center) || ciudad.center.length < 2) {
+                        console.warn('Ciudad inválida encontrada:', ciudad);
+                       if (zoomy<4){
+                        mostrarNotificacion('Se recomienda un Zoom más alto para trabajar con marcadores');
+                       }
+                        return false;
+                    }
 
-        const ciudadLng = ciudad.center[0];
-        const ciudadLat = ciudad.center[1];
-        
-        // Ajustar el margen de longitud basado en la latitud
-        const margenLngAjustado = margenGrados / Math.cos(ciudadLat * Math.PI / 180);
+                    const ciudadLng = ciudad.center[0];
+                    const ciudadLat = ciudad.center[1];
 
-        const dentroDeMargenLat = Math.abs(lat - ciudadLat) < margenGrados;
-        const dentroDeMargenLng = Math.abs(lng - ciudadLng) < margenLngAjustado;
+                    // Ajustar el margen de longitud basado en la latitud
+                    const margenLngAjustado = margenGrados / Math.cos(ciudadLat * Math.PI / 180);
 
-        return dentroDeMargenLat && dentroDeMargenLng;
-    });
+                    const dentroDeMargenLat = Math.abs(lat - ciudadLat) < margenGrados;
+                    const dentroDeMargenLng = Math.abs(lng - ciudadLng) < margenLngAjustado;
 
-    if (!cercaDeCiudad) {
-        // Eliminar el marcador anterior si existe
-        if (clickMarker) {
-            clickMarker.remove();
-        }
+                    return dentroDeMargenLat && dentroDeMargenLng;
+                });
 
-        // Crear el contenido del popup con estilos mejorados y el botón Salir centrado
-        const popupContent = `
+                if (!cercaDeCiudad) {
+                    // Eliminar el marcador anterior si existe
+                    if (zoomy < 4) {
+                        mostrarNotificacion('Se recomienda un Zoom más alto para trabajar con marcadores');
+
+                    }
+                    if (clickMarker) {
+                        clickMarker.remove();
+                    }
+
+                    // Crear el contenido del popup con estilos mejorados y el botón Salir centrado
+                    const popupContent = `
+                    <div style="z-index:9999">
             <h3>Ver pasos en esta ubicación</h3>
             <div style="margin-top:-1.5em">
                 <button onclick="predecirPasosISS(${lat}, ${lng})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Mostrar pasos</button>
@@ -833,46 +797,50 @@ function onMapClick(e) {
                     <button onclick="window.cerrarPopupYEliminarMarcador()" class="uk-button uk-button-secondary">Salir</button>
                 </div>
             </div>
+            </div>
         `;
+               
+                    // Crear el marcador con el popup
+                    clickMarker = new mapboxgl.Marker()
+                        .setLngLat([lng, lat])
+                        .setPopup(new mapboxgl.Popup({ offset: 25, closeButton: false })
+                            .setHTML(popupContent))
+                        .addTo(map);
 
-        // Crear el marcador con el popup
-        clickMarker = new mapboxgl.Marker()
-            .setLngLat([lng, lat])
-            .setPopup(new mapboxgl.Popup({ offset: 25, closeButton: false })
-                .setHTML(popupContent))
-            .addTo(map);
+                    // Abrir el popup automáticamente
+                    clickMarker.togglePopup();
+                } else {
+                    console.log('Clic cerca de una ciudad, no se realiza acción');
+                    if (zoomy<4){
+                        mostrarNotificacion('Se recomienda un Zoom más alto para trabajar con marcadores');
+                       }                
+                }
+            }
 
-        // Abrir el popup automáticamente
-        clickMarker.togglePopup();
-    } else {
-        console.log('Clic cerca de una ciudad, no se realiza acción');
-    }
-}
+            // Hacer la función accesible globalmente
+            window.cerrarPopupYEliminarMarcador = function () {
+                if (clickMarker) {
+                    // Cerrar el popup
+                    const popup = clickMarker.getPopup();
+                    if (popup.isOpen()) {
+                        popup.remove();
+                    }
 
-// Hacer la función accesible globalmente
-window.cerrarPopupYEliminarMarcador = function() {
-    if (clickMarker) {
-        // Cerrar el popup
-        const popup = clickMarker.getPopup();
-        if (popup.isOpen()) {
-            popup.remove();
-        }
-        
-        // Eliminar el marcador
-        clickMarker.remove();
-        clickMarker = null;
-    }
-};
+                    // Eliminar el marcador
+                    clickMarker.remove();
+                    clickMarker = null;
+                }
+            };
 
-// Asegúrate de que el mapa esté cargado antes de añadir el evento de clic
-map.on('load', function() {
-    console.log('Mapa cargado, añadiendo evento de clic');
-    map.on('click', onMapClick);
-});
+            // Asegúrate de que el mapa esté cargado antes de añadir el evento de clic
+            map.on('load', function () {
+                console.log('Mapa cargado, añadiendo evento de clic');
+                map.on('click', onMapClick);
+            });
 
-      
 
-            
+
+
 
             function marcador_simple() {
                 var marker = new mapboxgl.Marker()
@@ -893,7 +861,115 @@ map.on('load', function() {
             }
         }
 
+        function añadirMarcadoresFavoritos() {
+            console.log('Iniciando añadirMarcadoresFavoritos');
+            for (let lugar in ciudades) {
+                let datos = ciudades[lugar];
+                console.log(`Creando marcador para ${lugar}:`, datos);
 
+                let el = document.createElement('div');
+                el.className = 'marcador-favorito';
+                el.style.backgroundImage = 'url(/static/images/icono_azul.png)';
+                el.style.backgroundSize = 'contain';
+                el.style.width = tamaño_marcador + 'px';
+                el.style.height = tamaño_marcador + 'px';
+                el.style.backgroundRepeat = 'no-repeat';
+                el.style.backgroundPosition = 'center';
+                el.style.cursor = 'pointer';
+                el.style.zIndex = '1';
+                el.style.display = "none"; // Inicialmente oculto
+
+                let popup = new mapboxgl.Popup({ className: "popup" });
+
+                let popupContent = `
+            <div style="display:flex; flex-direction: column;"> 
+                <h3>${lugar}</h3>
+                <div style="margin-top:-1.5em">
+                    <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="irAlSitio(${datos.center[0]}, ${datos.center[1]}, ${datos.zoom}, this.closest('.mapboxgl-popup'))">Ir al sitio</button>
+                    <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="informacion('${datos.informacion}', '${lugar}', this.closest('.mapboxgl-popup'))">Más información</button>
+                    <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="predecirPasosISS(${datos.center[1]}, ${datos.center[0]}, this.closest('.mapboxgl-popup'))">Predecir pasos ISS</button>
+                    <button class="uk-button uk-button-secondary" onclick="volverAnterior(this.closest('.mapboxgl-popup'))">Exit</button>
+                </div>
+            </div>`;
+
+                popup.setHTML(popupContent);
+
+                var marker_fav = new mapboxgl.Marker(el)
+                    .setLngLat(datos.center)
+                    .setPopup(popup)
+                    .addTo(map);
+
+                console.log(`Marcador añadido para ${lugar}`);
+                marcadores_favoritos.push(marker_fav);
+            }
+
+            setTimeout(function () {
+                console.log('Finalizado añadirMarcadoresFavoritos');
+                // Cambiar el estilo del elemento DOM del marcador
+                marcadores_favoritos.forEach(marker => {
+                    marker.getElement().style.display = "block"; // Mostrar el marcador
+                });
+            }, 200);
+        }
+
+        window.informacion = function (url, lugar, popupToClose) {
+            if (popupToClose) {
+                popupToClose.remove();
+            }
+            if (url.includes("youtube") || url.includes("cloudinary")) {
+                document.getElementById('myvideo').setAttribute('src', url);
+                document.getElementById('titulo-video').innerText = lugar
+                UIkit.modal('#modal-example').show();
+            }
+            else {
+                document.getElementById('myinfo').setAttribute('src', url);
+                document.getElementById('titulo-iframe').innerText = lugar
+                UIkit.modal('#modal-info').show();
+            }
+
+        }
+
+
+        // Función para actaulizar todos los marcadores segun zoom cambia tamaño
+        function actualizar_tamaño_favoritos(zoomy) {
+            // Solo actualiza si el zoom ha cambiado significativamente
+            if (Math.abs(zoomy - lastZoom) > 0.5) {
+                marcadores_favoritos.forEach(marker => {
+                    // Accede al elemento del marcador y actualiza su tamaño
+                    const markerElement = marker.getElement();
+                    switch (true) {
+                        case (zoomy <= 1.4):
+                            tamaño_marcador = 3;
+                            break;
+                        case (zoomy <= 1.9):
+                            tamaño_marcador = 4;
+                            break;
+                        case (zoomy <= 3):
+                            tamaño_marcador = 5;
+                            break;
+                        case (zoomy <= 4):
+                            tamaño_marcador = 8;
+                            break;
+                        case (zoomy > 4 && zoomy <= 6):
+                            tamaño_marcador = zoomy * 3;
+                            break;
+                        case (zoomy > 6):
+                            tamaño_marcador = 20;
+                            break;
+                        case (zoomy > 8):
+                            tamaño_marcador = 25;
+                            break;
+                        default:
+                            tamaño_marcador = 3; // Valor por defecto si no se cumple ninguna condición
+                    }
+
+
+                    markerElement.style.width = tamaño_marcador + 'px';
+                    markerElement.style.height = tamaño_marcador + 'px';
+                });
+                lastZoom = zoomy; // Actualiza el último zoom
+            }
+        }
 
 
         // Asegúrate de que esta función se llame cuando el mapa esté cargado

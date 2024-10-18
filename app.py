@@ -9,35 +9,44 @@ from pymap3d import ecef2geodetic
 from typing import List, Dict
 import traceback
 import os
+from dotenv import load_dotenv
 
+# Cargar las variables de entorno desde el archivo .env
+load_dotenv()
+
+# Inicializamos la aplicación Flask
 app = Flask(__name__, static_folder='static', template_folder='templates', static_url_path='/static')
-CORS(app)
-ub = [0, 0]  # Mantenemos el array original con longitud y latitud
+CORS(app)  # Habilitamos CORS para permitir solicitudes de diferentes orígenes
+
+# Variables globales para almacenar la ubicación y velocidad de la ISS
+ub = [0, 0]  # Array para longitud y latitud
 velocidad_iss = 0
 altitud_iss = 0
-
-astronautas_cache = None
+astronautas_cache = None  # Cache para almacenar detalles de astronautas
 
 def obtener_ubicacion_iss():
     global ub, velocidad_iss, altitud_iss
     try:
+        # Realizamos una solicitud a la API para obtener la ubicación de la ISS
         respuesta = requests.get("https://api.wheretheiss.at/v1/satellites/25544")
-        datos = respuesta.json()
+        datos = respuesta.json()  # Convertimos la respuesta a formato JSON
         
-        if respuesta.status_code == 200:
+        if respuesta.status_code == 200:  # Verificamos si la solicitud fue exitosa
+            # Actualizamos las variables globales con los datos obtenidos
             ub = [float(datos['longitude']), float(datos['latitude'])]
             velocidad_iss = float(datos['velocity'])
             altitud_iss = float(datos['altitude'])
-            return ub, velocidad_iss, altitud_iss
+            return ub, velocidad_iss, altitud_iss  # Retornamos los datos
         else:
-            return ub, velocidad_iss, altitud_iss
+            return ub, velocidad_iss, altitud_iss  # Retornamos los datos anteriores en caso de error
     except requests.RequestException:
-        return ub, velocidad_iss, altitud_iss
+        return ub, velocidad_iss, altitud_iss  # Retornamos los datos anteriores si ocurre una excepción
 
 @app.route('/actualizar_ubicacion')
 def actualizar_ubicacion():
     print("Llamada a actualizar_ubicacion")
     try:
+        # Obtenemos la ubicación actual de la ISS
         ubicacion, velocidad, altitud = obtener_ubicacion_iss()
         return {
             'longitud': ubicacion[0],
@@ -56,12 +65,13 @@ def actualizar_ubicacion():
         })
 
 def obtener_pasos_iss(latitud, longitud, dias=10):
-    api_key = "J9JWLD-V6A5DE-9G6Y54-5CR5"
+    api_key = "J9JWLD-V6A5DE-9G6Y54-5CR5"  # Clave API para acceder a los datos de pasos de la ISS
     url = f"https://api.n2yo.com/rest/v1/satellite/visualpasses/25544/{latitud}/{longitud}/0/{dias}/300/&apiKey={api_key}"
     
     try:
+        # Realizamos una solicitud a la API para obtener los pasos de la ISS
         respuesta = requests.get(url, timeout=10)
-        respuesta.raise_for_status()
+        respuesta.raise_for_status()  # Verificamos si la solicitud fue exitosa
         datos = respuesta.json()
         
         print("URL de la solicitud (sin clave API):", url.rsplit('&apiKey=', 1)[0])
@@ -74,12 +84,13 @@ def obtener_pasos_iss(latitud, longitud, dias=10):
             print("No se encontraron pasos en la respuesta de la API")
             return []
         
-        pasos = datos['passes']
+        pasos = datos['passes']  # Extraemos los pasos de la respuesta
         print(f"Número de pasos encontrados: {len(pasos)}")
         
-        pasos_formateados = []
+        pasos_formateados = []  # Lista para almacenar los pasos formateados
         for paso in pasos:
             try:
+                # Convertimos las marcas de tiempo a un formato legible
                 inicio = datetime.utcfromtimestamp(paso['startUTC'])
                 fin = datetime.utcfromtimestamp(paso['endUTC'])
                 pasos_formateados.append({
@@ -92,7 +103,7 @@ def obtener_pasos_iss(latitud, longitud, dias=10):
                 print(f"Error al procesar un paso: {e}. Datos del paso: {paso}")
         
         print(f"Pasos formateados: {json.dumps(pasos_formateados, indent=2)}")
-        return pasos_formateados
+        return pasos_formateados  # Retornamos los pasos formateados
     except requests.RequestException as e:
         raise Exception(f"Error al obtener datos de pasos de la ISS: {str(e)}")
     except KeyError as e:
@@ -125,43 +136,62 @@ def predecir_pasos():
         app.logger.error(f"Error en predecir_pasos: {str(e)}\n{error_details}")
         return jsonify({"error": "Error interno del servidor", "details": str(e)}), 500
 
-def obtener_y_procesar_datos_xml():
+def obtener_y_procesar_datos_xml(max_reintentos=5, tiempo_espera=3):
     url_archivo = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
-    try:
-        respuesta = requests.get(url_archivo)
-        respuesta.raise_for_status()
-        
-        data = xmltodict.parse(respuesta.content)
-        state_vectors = data['ndm']['oem']['body']['segment']['data']['stateVector']
-        
-        lista = []
-        latitudes = []
-        longitudes = []
-        
-        for vector in state_vectors:
-            epoch = vector['EPOCH']
-            x = float(vector['X']['#text']) * 1000
-            y = float(vector['Y']['#text']) * 1000
-            z = float(vector['Z']['#text']) * 1000
+    intentos = 0  # Contador de intentos
+
+    while intentos < max_reintentos:
+        try:
+            # Realizamos una solicitud para obtener datos en formato XML
+            respuesta = requests.get(url_archivo)
+            respuesta.raise_for_status()  # Verificamos si la solicitud fue exitosa
             
-            fecha, hora = extraer_fecha_hora(epoch)
-            lat, lon = cartesian_to_geodetic(x, y, z)
-            lista.append([lon, lat])
-            latitudes.append(lat)
-            longitudes.append(lon)
-        
-        return lista, latitudes, longitudes
-    except requests.RequestException as e:
-        print(f"Error al obtener o procesar el archivo XML: {str(e)}")
-        return [], [], []
+            # Convertimos el contenido XML a un diccionario
+            data = xmltodict.parse(respuesta.content)  # Convertimos el contenido XML a un diccionario
+            state_vectors = data['ndm']['oem']['body']['segment']['data']['stateVector']
+            
+            lista = []  # Lista para almacenar las coordenadas
+            latitudes = []  # Lista para almacenar latitudes
+            longitudes = []  # Lista para almacenar longitudes
+            
+            for vector in state_vectors:
+                epoch = vector['EPOCH']
+                x = float(vector['X']['#text']) * 1000  # Convertimos a metros
+                y = float(vector['Y']['#text']) * 1000
+                z = float(vector['Z']['#text']) * 1000
+                
+                fecha, hora = extraer_fecha_hora(epoch)  # Extraemos la fecha y hora
+                lat, lon = cartesian_to_geodetic(x, y, z)  # Convertimos coordenadas cartesianas a geodésicas
+                lista.append([lon, lat])  # Agregamos las coordenadas a la lista
+                latitudes.append(lat)
+                longitudes.append(lon)
+            
+            return lista, latitudes, longitudes  # Retornamos las listas de coordenadas
+
+        except requests.ConnectionError:
+            return render_template('sin_internet.html')  # Template para error de conexión
+        except requests.RequestException as e:
+            intentos += 1  # Incrementamos el contador de intentos
+            print(f"Error al obtener o procesar el archivo XML (intento {intentos}): {str(e)}")
+            if intentos < max_reintentos:
+                print("Reintentando en {} segundos...".format(tiempo_espera))
+                time.sleep(tiempo_espera)  # Esperamos antes de reintentar
+            else:
+                print("Se alcanzó el número máximo de reintentos. Retornando listas vacías.")
+                return render_template('error_nasa.html')  # Template para error de NASA
+    
+    return [], [], []  # Retornamos listas vacías en caso de error después de los reintentos
 
 @app.route('/mapa')
 def mostrar_mapa():
     print("Accediendo a la ruta /mapa")
     ubicacion, velocidad, altitud = obtener_ubicacion_iss()
     lista, latitudes, longitudes = obtener_y_procesar_datos_xml()
+    
+    if not lista:
+        return render_template('error_nasa.html')  # Template para error de NASA
+    
     astronautas = obtener_todos_detalles_astronautas()
-    print("Datos de astronautas:", astronautas)  
     return render_template('mapa.html', ubicacion=ubicacion, velocidad=velocidad, altitud=altitud, lista=lista, astronautas=astronautas)
 
 @app.route('/')
@@ -358,4 +388,5 @@ def api_todos_astronautas():
     return jsonify(astronautas)
 
 if __name__ == '__main__':
+  
     app.run(debug=True)

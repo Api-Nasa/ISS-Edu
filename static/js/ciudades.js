@@ -57,7 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'Acueducto_Segovia': {center: [-4.1185, 40.9480], zoom: 16, informacion: "https://es.wikipedia.org/wiki/Acueducto_de_Segovia"},
     'Puerto_Sydney': {center: [151.2093, -33.8688], zoom: 13, informacion: "https://es.wikipedia.org/wiki/Puerto_de_S%C3%ADdney"},
     'Pinguinos_Phillip': {center: [145.1506, -38.4899], zoom: 12, informacion: "https://es.wikipedia.org/wiki/Isla_Phillip"},
-    'Gran_Barrera_Coral': {center: [146.2559, -18.2871], zoom: 7, informacion: "https://es.wikipedia.org/wiki/Gran_barrera_de_coral"}
+    'Gran_Barrera_Coral': {center: [146.2559, -18.2871], zoom: 7, informacion: "https://es.wikipedia.org/wiki/Gran_barrera_de_coral"},
+    'Catedral de Ciudad Real':{center:[ -3.9309,38.9866],zoom:14,informacion:"https://res.cloudinary.com/dquxfl0fe/video/upload/didactico_htn1mq.mp4?_s=vp-2.1.0"}
   };
   
   const esDispositivoMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);

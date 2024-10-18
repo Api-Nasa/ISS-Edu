@@ -12,7 +12,9 @@ RUN pip install -r requirements.txt
 
 # Copia todo el contenido del directorio actual al contenedor
 COPY . .
-
+# Establece la variable de entorno para Flask
+ENV FLASK_APP=app.py  # Cambia esto al nombre de tu archivo principal
+ENV FLASK_ENV=production  # Establece el entorno a producción
 # Expone el puerto 5000 (o el puerto en el que se ejecute tu aplicación Flask)
 EXPOSE 5000
 
