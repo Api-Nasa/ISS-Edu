@@ -326,7 +326,7 @@ def obtener_todos_detalles_astronautas():
         return []
 
 def obtener_detalles_astronauta_optimizado(nombre, datos_nasa):
-    imagen_url = "/static/images/no-foto.jpg"
+    imagen_url = "https://via.placeholder.com/200x200.png?text=No+Image"
     descripcion = "No hay información adicional disponible."
     nacionalidad = "Desconocida"
     agencia = "ISS"
