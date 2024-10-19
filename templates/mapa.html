@@ -38,7 +38,7 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner"></div>
     </div>
-   
+
     <!-- This is a button toggling the off-canvas  BOTON QUE EXPANDE DESPLEGABLE OPCIONES-->
     <button id="opciones" uk-toggle="target: #my-id" type="button" style="position: fixed;border-radius: 0.5em;
     top:3em;left: 3em; font-size: 1.5em;padding: 0.5em;cursor: pointer;opacity: 0;z-index: 1;">
@@ -204,10 +204,11 @@
                         style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Torre Eiffel</div>
                     <div id="Toledo" class="uk-badge ciudades" onclick="moverMapa(this.id)"
                         style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Toledo</div>
-                        <div id="Castillo de Orgaz" class="uk-badge ciudades" onclick="moverMapa(this.id)"
-                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Castillo de Orgaz</div>
-                    
-                        <div id="Catedral de Ciudad Real" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                    <div id="Castillo de Orgaz" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Castillo de Orgaz
+                    </div>
+
+                    <div id="Catedral de Ciudad Real" class="uk-badge ciudades" onclick="moverMapa(this.id)"
                         style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Toledo</div>
                     <div id="Acropolis_Atenas" class="uk-badge ciudades" onclick="moverMapa(this.id)"
                         style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Acrópolis de Atenas
@@ -438,7 +439,7 @@
 
     </div>
 
-  
+
 
 
     <div id="map-overlay"
@@ -452,7 +453,7 @@
 
     </div>
 
-   
+
 
 
     <script defer src="{{url_for('static',filename='js/ciudades.js')}}" defer></script>
@@ -762,9 +763,9 @@
                 const cercaDeCiudad = Object.values(ciudades).some(ciudad => {
                     if (!ciudad || !Array.isArray(ciudad.center) || ciudad.center.length < 2) {
                         console.warn('Ciudad inválida encontrada:', ciudad);
-                       if (zoomy<4){
-                        mostrarNotificacion('Se recomienda un Zoom más alto para trabajar con marcadores');
-                       }
+                        if (zoomy < 4) {
+                            mostrarNotificacion('Se recomienda un Zoom más alto para trabajar con marcadores');
+                        }
                         return false;
                     }
 
@@ -805,7 +806,7 @@
             </div>
             </div>
         `;
-               
+
                     // Crear el marcador con el popup
                     clickMarker = new mapboxgl.Marker()
                         .setLngLat([lng, lat])
@@ -817,9 +818,9 @@
                     clickMarker.togglePopup();
                 } else {
                     console.log('Clic cerca de una ciudad, no se realiza acción');
-                    if (zoomy<4){
+                    if (zoomy < 4) {
                         mostrarNotificacion('Se recomienda un Zoom más alto para trabajar con marcadores');
-                       }                
+                    }
                 }
             }
 
@@ -1728,6 +1729,22 @@
                 });
             }
         }
+
+        function street_view(latitud, longitud) {
+            const ubicacion = `${latitud},${longitud}`;
+            const url_google_maps = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ubicacion}&t=${new Date().getTime()}`; // Agregado parámetro único
+
+            // Abrir la URL de Google Maps en una nueva pestaña
+            window.open(url_google_maps, '_blank');
+        }
+
+        function google_earth(latitud, longitud) {
+            const ubicacion = `${latitud},${longitud}`;
+            const url_google_earth = `https://earth.google.com/web/@${ubicacion},1?t=${new Date().getTime()}&rand=${Math.random()}`; // Agregado parámetro único
+
+            window.open(url_google_earth, '_blank');
+        }
+
 
 
 

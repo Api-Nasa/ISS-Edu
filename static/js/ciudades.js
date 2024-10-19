@@ -79,22 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function street_view(latitud, longitud) {
-    const ubicacion = `${latitud},${longitud}`;
-    const url_google_maps = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ubicacion}&t=${new Date().getTime()}`; // Agregado parámetro único
-    
-    // Abrir la URL de Google Maps en una nueva pestaña
-    window.open(url_google_maps, '_blank');
-  }
-
-  function google_earth(latitud, longitud) {
-    const ubicacion = `${latitud},${longitud}`;
-    const url_google_earth = `https://earth.google.com/web/@${ubicacion},1?t=${new Date().getTime()}&rand=${Math.random()}`; // Agregado parámetro único
-    
-    window.open(url_google_earth, '_blank');
-}
-
- 
 
 
  
