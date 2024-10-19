@@ -204,7 +204,10 @@
                         style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Torre Eiffel</div>
                     <div id="Toledo" class="uk-badge ciudades" onclick="moverMapa(this.id)"
                         style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Toledo</div>
-                    <div id="Catedral de Ciudad Real" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        <div id="Castillo de Orgaz" class="uk-badge ciudades" onclick="moverMapa(this.id)"
+                        style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Castillo de Orgaz</div>
+                    
+                        <div id="Catedral de Ciudad Real" class="uk-badge ciudades" onclick="moverMapa(this.id)"
                         style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Toledo</div>
                     <div id="Acropolis_Atenas" class="uk-badge ciudades" onclick="moverMapa(this.id)"
                         style="color:white !important;font-size: 1.2em;height:1.2em; padding:0.8em;">Acrópolis de Atenas
@@ -793,6 +796,9 @@
             <h3>Ver pasos en esta ubicación</h3>
             <div style="margin-top:-1.5em">
                 <button onclick="predecirPasosISS(${lat}, ${lng})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Mostrar pasos</button>
+                <button onclick="street_view(${lat}, ${lng})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Street view</button>
+                <button onclick="google_earth(${lat}, ${lng})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Google Earth</button>
+
                 <div style="text-align:center;">
                     <button onclick="window.cerrarPopupYEliminarMarcador()" class="uk-button uk-button-secondary">Salir</button>
                 </div>
@@ -884,11 +890,13 @@
                 let popupContent = `
             <div style="display:flex; flex-direction: column;"> 
                 <h3>${lugar}</h3>
-                <div style="margin-top:-1.5em">
+                <div style="margin-top:-1.5em;fornt-size:0.7em">
                     <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="irAlSitio(${datos.center[0]}, ${datos.center[1]}, ${datos.zoom}, this.closest('.mapboxgl-popup'))">Ir al sitio</button>
                     <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="informacion('${datos.informacion}', '${lugar}', this.closest('.mapboxgl-popup'))">Más información</button>
                     <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="predecirPasosISS(${datos.center[1]}, ${datos.center[0]}, this.closest('.mapboxgl-popup'))">Predecir pasos ISS</button>
-                    <button class="uk-button uk-button-secondary" onclick="volverAnterior(this.closest('.mapboxgl-popup'))">Exit</button>
+                    <button onclick="street_view(${datos.center[0]}, ${datos.center[1]})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Street view</button>
+                <button onclick="google_earth(${datos.center[0]}, ${datos.center[1]})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Google Earth</button>
+                     <button class="uk-button uk-button-secondary" onclick="volverAnterior(this.closest('.mapboxgl-popup'))">Exit</button>
                 </div>
             </div>`;
 

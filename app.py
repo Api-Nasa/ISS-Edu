@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 import time
 import requests
+import webbrowser
 import xmltodict
 from datetime import datetime, timedelta
 from pymap3d import ecef2geodetic
@@ -325,7 +326,7 @@ def obtener_todos_detalles_astronautas():
         return []
 
 def obtener_detalles_astronauta_optimizado(nombre, datos_nasa):
-    imagen_url = "https://via.placeholder.com/200x200.png?text=No+Image"
+    imagen_url = "/static/images/no-foto.jpg"
     descripcion = "No hay información adicional disponible."
     nacionalidad = "Desconocida"
     agencia = "ISS"
@@ -386,6 +387,10 @@ def obtener_nacionalidad_por_agencia(agencia):
 def api_todos_astronautas():
     astronautas = obtener_todos_detalles_astronautas()
     return jsonify(astronautas)
+
+
+
+
 
 if __name__ == '__main__':
   

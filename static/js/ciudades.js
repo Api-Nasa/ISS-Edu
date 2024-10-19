@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'Estatua_Libertad': {center: [-74.0445, 40.6892], zoom: 15, informacion: "https://es.wikipedia.org/wiki/Estatua_de_la_Libertad"},
     'Torre_Eiffel': {center: [2.2945, 48.8584], zoom: 16, informacion: "https://es.wikipedia.org/wiki/Torre_Eiffel"},
     'Toledo': {center: [-4.0273, 39.8628], zoom: 14, informacion: "https://es.wikipedia.org/wiki/Toledo"},
+    'Castillo de Orgaz': {center: [-3.8778,39.6476], zoom: 14, informacion: "https://es.wikipedia.org/wiki/Toledo"},
     'Acropolis_Atenas': {center: [23.7257, 37.9715], zoom: 16, informacion: "https://es.wikipedia.org/wiki/Acr%C3%B3polis_de_Atenas"},
     'Coliseo_Roma': {center: [12.4922, 41.8902], zoom: 16, informacion: "https://es.wikipedia.org/wiki/Coliseo"},
     'Alhambra': {center: [-3.5886, 37.1760], zoom: 15.5, informacion: "https://es.wikipedia.org/wiki/Alhambra"},
@@ -77,6 +78,21 @@ document.addEventListener('DOMContentLoaded', () => {
       map.flyTo({ center, zoom, speed: 0.2 });
     }
   }
+
+  function street_view(latitud, longitud) {
+    const ubicacion = `${latitud},${longitud}`;
+    const url_google_maps = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ubicacion}&t=${new Date().getTime()}`; // Agregado parámetro único
+    
+    // Abrir la URL de Google Maps en una nueva pestaña
+    window.open(url_google_maps, '_blank');
+  }
+
+  function google_earth(latitud, longitud) {
+    const ubicacion = `${latitud},${longitud}`;
+    const url_google_earth = `https://earth.google.com/web/@${ubicacion},1?t=${new Date().getTime()}&rand=${Math.random()}`; // Agregado parámetro único
+    
+    window.open(url_google_earth, '_blank');
+}
 
  
 
