@@ -793,8 +793,11 @@
             <h3>Ver pasos en esta ubicación</h3>
             <div style="margin-top:-1.5em">
                 <button onclick="predecirPasosISS(${lat}, ${lng})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Mostrar pasos</button>
-                <button onclick="street_view(${lat}, ${lng})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Street view</button>
-                <button onclick="google_earth(${lat}, ${lng})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Google Earth</button>
+                
+                <!-- Cambiado a enlace con aspecto de botón -->
+                <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}" target="_blank" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Street view</a>
+                
+                <a href="https://earth.google.com/web/@${lat},${lng},50z" target="_blank" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Google Earth</a>
 
                 <div style="text-align:center;">
                     <button onclick="window.cerrarPopupYEliminarMarcador()" class="uk-button uk-button-secondary">Salir</button>
@@ -891,8 +894,8 @@
                     <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="irAlSitio(${datos.center[0]}, ${datos.center[1]}, ${datos.zoom}, this.closest('.mapboxgl-popup'))">Ir al sitio</button>
                     <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="informacion('${datos.informacion}', '${lugar}', this.closest('.mapboxgl-popup'))">Más información</button>
                     <button class="uk-button uk-button-primary" style="margin-bottom:0.5em" onclick="predecirPasosISS(${datos.center[1]}, ${datos.center[0]}, this.closest('.mapboxgl-popup'))">Predecir pasos ISS</button>
-                    <button onclick="street_view(${datos.center[0]}, ${datos.center[1]})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Street view</button>
-                <button onclick="google_earth(${datos.center[0]}, ${datos.center[1]})" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Google Earth</button>
+                    <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${datos.center[1]},${datos.center[0]}" target="_blank" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Street view</a>
+                    <a href="https://earth.google.com/web/@${datos.center[1]},${datos.center[0]},50z" target="_blank" class="uk-button uk-button-primary" style="margin-bottom:0.5em; width:100%;">Ver en Google Earth</a>
                      <button class="uk-button uk-button-secondary" onclick="volverAnterior(this.closest('.mapboxgl-popup'))">Exit</button>
                 </div>
             </div>`;
@@ -1731,14 +1734,14 @@
             const url_google_maps = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ubicacion}&t=${new Date().getTime()}`; // Agregado parámetro único
 
             // Abrir la URL de Google Maps en una nueva pestaña
-            window.open(url_google_maps, '_blank');
+            window.location.href=url_google_maps
         }
 
         function google_earth(latitud, longitud) {
             const ubicacion = `${latitud},${longitud}`;
-            const url_google_earth = `https://earth.google.com/web/@${ubicacion},1?t=${new Date().getTime()}&rand=${Math.random()}`; // Agregado parámetro único
+            const url_google_earth = `https://earth.google.com/web/@${ubicacion},50z`; // Cambiado a zoom 3
 
-            window.open(url_google_earth, '_blank');
+            window.location.href=url_google_earth
         }
 
 
